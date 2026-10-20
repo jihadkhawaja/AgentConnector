@@ -1,0 +1,115 @@
+name: Publish AgentConnector NuGet package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PACKAGE_SOURCE: https://nuget.pkg.github.com/jihadkhawaja/index.json
+  NUGET_SOURCE: https://api.nuget.org/v3/index.json
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Validate release version
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version="${RELEASE_TAG#v}"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG. Expected vMAJOR.MINOR.PATCH or a SemVer prerelease." >&2
+            exit 1
+          fi
+          if [[ "$version" == *-* ]]; then
+            IFS='.' read -r -a identifiers <<< "${version#*-}"
+            for identifier in "${identifiers[@]}"; do
+              if [[ "$identifier" =~ ^0[0-9]+$ ]]; then
+                echo "Numeric prerelease identifiers cannot have leading zeroes." >&2
+                exit 1
+              fi
+            done
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Restore dependencies
+        run: dotnet restore AgentConnector.slnx --locked-mode
+
+      - name: Build
+        run: >-
+          dotnet build AgentConnector.slnx --configuration Release --no-restore
+          -p:Version="${{ steps.release.outputs.version }}"
+          -p:PackageVersion="${{ steps.release.outputs.version }}"
+
+      - name: Test
+        run: dotnet test tests/AgentConnector.Tests/AgentConnector.Tests.csproj --configuration Release --no-build --no-restore
+
+      - name: Pack
+        run: >-
+          dotnet pack src/AgentConnector/AgentConnector.csproj
+          --configuration Release --no-build --output ./artifacts/package
+          -p:Version="${{ steps.release.outputs.version }}"
+          -p:PackageVersion="${{ steps.release.outputs.version }}"
+
+      - name: Verify package metadata
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $packages = @(Get-ChildItem ./artifacts/package/*.nupkg)
+          if ($packages.Count -ne 1) { throw 'Expected exactly one NuGet package.' }
+          foreach ($package in $packages) {
+            $archive = [System.IO.Compression.ZipFile]::OpenRead($package.FullName)
+            try {
+              $entry = $archive.GetEntry('AgentConnector.nuspec')
+              if ($null -eq $entry) { throw 'Package manifest is missing.' }
+              $reader = [System.IO.StreamReader]::new($entry.Open())
+              try { [xml]$manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+              $metadata = $manifest.package.metadata
+              if ($metadata.id -ne 'AgentConnector' -or $metadata.version -ne $env:RELEASE_VERSION) {
+                throw "Package identity/version does not match AgentConnector $env:RELEASE_VERSION."
+              }
+              if ($metadata.license.type -ne 'expression' -or $metadata.license.InnerText -ne 'Apache-2.0') {
+                throw 'Package must declare the Apache-2.0 license.'
+              }
+              if ($null -eq $archive.GetEntry('LICENSE')) { throw 'Package license text is missing.' }
+            } finally {
+              $archive.Dispose()
+            }
+          }
+
+      - name: Publish to GitHub Packages
+        run: dotnet nuget push ./artifacts/package/*.nupkg --source "$PACKAGE_SOURCE" --api-key "${{ secrets.GITHUB_TOKEN }}" --skip-duplicate
+
+      - name: Authenticate to NuGet.org with trusted publishing
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: jihadkhawaja
+
+      - name: Publish to NuGet.org
+        run: dotnet nuget push ./artifacts/package/*.nupkg --source "$NUGET_SOURCE" --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" --skip-duplicate

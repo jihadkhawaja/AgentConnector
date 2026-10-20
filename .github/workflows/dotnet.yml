@@ -1,0 +1,28 @@
+name: Native .NET
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet restore AgentConnector.slnx --locked-mode
+      - run: dotnet build AgentConnector.slnx -c Release --no-restore
+      - run: dotnet test AgentConnector.slnx -c Release --no-build
+      - run: dotnet pack src/AgentConnector -c Release --no-build -o artifacts/packages
+      - run: dotnet publish samples/AgentConnector.Server -c Release --no-build -o artifacts/server
+      - run: dotnet list AgentConnector.slnx package --vulnerable --include-transitive --no-restore

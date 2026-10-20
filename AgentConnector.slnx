@@ -1,0 +1,11 @@
+<Solution>
+	<Folder Name="/src/">
+		<Project Path="src/AgentConnector/AgentConnector.csproj" />
+	</Folder>
+	<Folder Name="/samples/">
+		<Project Path="samples/AgentConnector.Server/AgentConnector.Server.csproj" />
+	</Folder>
+	<Folder Name="/tests/">
+		<Project Path="tests/AgentConnector.Tests/AgentConnector.Tests.csproj" />
+	</Folder>
+</Solution>
