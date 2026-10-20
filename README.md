@@ -1,5 +1,11 @@
 # AgentConnector
 
+[![NuGet](https://img.shields.io/nuget/v/AgentConnector.svg)](https://www.nuget.org/packages/AgentConnector/)
+[![Downloads](https://img.shields.io/nuget/dt/AgentConnector.svg)](https://www.nuget.org/packages/AgentConnector/)
+[![Build](https://github.com/jihadkhawaja/agentconnector/actions/workflows/dotnet.yml/badge.svg)](https://github.com/jihadkhawaja/agentconnector/actions/workflows/dotnet.yml)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 A C# / .NET 10 library for connecting ASP.NET Core applications to external services. Runs in your server process without Docker, container images, or Node.js.
 
 Includes 48 provider adapters, 158 actions, OAuth, encrypted credentials, tenant isolation, and OpenAPI. The library uses only the .NET and ASP.NET Core shared frameworks.
