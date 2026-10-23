@@ -20,7 +20,7 @@ public sealed class ConnectorOAuth(ConnectorOptions options, ProviderCatalog cat
 
     public async Task<OAuthAuthorization> BeginAsync(ConnectionKey key, CancellationToken cancellationToken = default)
     {
-        EncryptedFileCredentialStore.ValidateKey(key);
+        key.Validate();
         var provider = catalog.GetProvider(key.ProviderId);
         var (client, endpoints) = Configuration(provider);
         using var lease = await coordinator.LockAsync(key, cancellationToken);

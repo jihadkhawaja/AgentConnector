@@ -8,6 +8,39 @@ namespace AgentConnector.Tests;
 public sealed class StorageAndNetworkTests
 {
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("invalid\nidentity")]
+    [InlineData("invalid\0identity")]
+    public void ConnectionKeysRejectInvalidIdentifiers(string? value)
+    {
+        Assert.Equal("invalid_input", Assert.Throws<ConnectorException>(() => new ConnectionKey(value!, "github").Validate()).Code);
+        Assert.Equal("invalid_input", Assert.Throws<ConnectorException>(() => new ConnectionKey("tenant", value!).Validate()).Code);
+        Assert.Equal("invalid_input", Assert.Throws<ConnectorException>(() => new ConnectionKey("tenant", "github", value!).Validate()).Code);
+    }
+
+    [Fact]
+    public void ConnectionKeysEnforceIdentifierLengthLimits()
+    {
+        var maximumLength = new string('a', 256);
+        new ConnectionKey(maximumLength, maximumLength, maximumLength).Validate();
+
+        var tooLong = new string('a', 257);
+        Assert.Throws<ConnectorException>(() => new ConnectionKey(tooLong, "github").Validate());
+        Assert.Throws<ConnectorException>(() => new ConnectionKey("tenant", tooLong).Validate());
+        Assert.Throws<ConnectorException>(() => new ConnectionKey("tenant", "github", tooLong).Validate());
+    }
+
+    [Fact]
+    public void CredentialStorePreservesConnectionKeyValidationCompatibility()
+    {
+        EncryptedFileCredentialStore.ValidateKey(new("tenant", "github"));
+        Assert.Equal("invalid_input", Assert.Throws<ConnectorException>(() =>
+            EncryptedFileCredentialStore.ValidateKey(new("tenant", "github", ""))).Code);
+    }
+
+    [Theory]
     [InlineData("127.0.0.1", false)]
     [InlineData("10.0.0.1", false)]
     [InlineData("169.254.169.254", false)]

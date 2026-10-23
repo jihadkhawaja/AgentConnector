@@ -56,6 +56,7 @@ The API is at `http://127.0.0.1:5188/connector`. Send the appropriate token in t
 
 ## Documentation
 
+- [Architecture and extension boundaries](docs/ARCHITECTURE.md)
 - [Providers and supported operations](docs/PROVIDERS.md)
 - [Security and deployment](SECURITY.md)
 - [Features and limitations](docs/COMPATIBILITY.md)

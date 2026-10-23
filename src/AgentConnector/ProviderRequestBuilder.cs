@@ -80,7 +80,7 @@ public static class ProviderRequestBuilder
     {
         if (provider.CredentialKind == CredentialKind.None) return;
         if (credential is null) throw new ConnectorException("connection_not_found", "The selected connection does not exist.", System.Net.HttpStatusCode.NotFound);
-        ValidateCredential(provider, credential);
+        credential.Validate(provider);
         switch (credential.Kind)
         {
             case CredentialKind.Basic:
@@ -96,15 +96,7 @@ public static class ProviderRequestBuilder
         }
     }
 
-    public static void ValidateCredential(ConnectorProvider provider, ConnectorCredential credential)
-    {
-        if (!Enum.IsDefined(credential.Kind) || credential.Kind == CredentialKind.None || string.IsNullOrWhiteSpace(credential.Secret) ||
-            credential.Secret.Length > 32768 || credential.Secret.Any(char.IsControl) || credential.UserName?.Any(char.IsControl) == true ||
-            (credential.Kind is CredentialKind.Bearer or CredentialKind.OAuth2 && credential.Secret.Any(char.IsWhiteSpace)) ||
-            (credential.Kind == CredentialKind.Basic && (string.IsNullOrWhiteSpace(credential.UserName) || credential.UserName.Contains(':'))) ||
-            (credential.Kind == CredentialKind.ApiKey && provider.ApiKeyHeader is null && provider.ApiKeyQueryParameter is null))
-            throw Invalid("Invalid or unsupported provider credential.");
-    }
+    public static void ValidateCredential(ConnectorProvider provider, ConnectorCredential credential) => credential.Validate(provider);
 
     private static Uri BuildUri(ConnectorProvider provider, string path)
     {

@@ -35,6 +35,52 @@ public sealed class OAuthAndRuntimeTests : IDisposable
     }
 
     [Fact]
+    public async Task ConnectionServiceManagesCredentialsWithoutExecutingRequests()
+    {
+        var connections = new ConnectorConnectionService(catalog, store, coordinator, oauth);
+        var key = new ConnectionKey("tenant", "github", "work");
+        var credential = new ConnectorCredential(CredentialKind.Bearer, "connection-secret");
+
+        var info = await connections.SetAsync(key, credential);
+        Assert.Equal(new ConnectionInfo("github", "work", CredentialKind.Bearer, null), info);
+        Assert.Equal(credential, await store.GetAsync(key));
+
+        var listed = new List<ConnectionInfo>();
+        await foreach (var connection in connections.ListAsync(key.TenantId)) listed.Add(connection);
+        Assert.Equal(info, Assert.Single(listed));
+
+        await connections.DeleteAsync(key);
+        Assert.Null(await store.GetAsync(key));
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
+    public async Task ReplacingConnectionFencesPendingOAuthCallback()
+    {
+        var key = new ConnectionKey("tenant", "github");
+        var authorization = await oauth.BeginAsync(key);
+        var connections = new ConnectorConnectionService(catalog, store, coordinator, oauth);
+        await connections.SetAsync(key, new(CredentialKind.Bearer, "replacement-secret"));
+
+        var state = QueryHelpers.ParseQuery(authorization.AuthorizationUri.Query)["state"].ToString();
+        Assert.Equal("stale_oauth_state", (await Assert.ThrowsAsync<ConnectorException>(() => oauth.CompleteAsync(state, "code"))).Code);
+        Assert.Equal("replacement-secret", (await store.GetAsync(key))!.Secret);
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
+    public async Task ExpiredNonRefreshableCredentialsNeverDispatch()
+    {
+        await runtime.SetConnectionAsync(new("tenant", "github"),
+            new(CredentialKind.Bearer, "expired-secret", ExpiresAt: DateTimeOffset.UtcNow.AddMinutes(-1)));
+
+        var exception = await Assert.ThrowsAsync<ConnectorException>(() => runtime.ExecuteAsync("tenant", "github.get_current_user", new()));
+        Assert.Equal("credential_expired", exception.Code);
+        Assert.Equal(HttpStatusCode.Unauthorized, exception.Status);
+        Assert.Equal(0, handler.Calls);
+    }
+
+    [Fact]
     public async Task OAuthUsesPkceSingleUseStateAndDoesNotReturnSecrets()
     {
         var authorization = await oauth.BeginAsync(new("tenant", "github", "work"));

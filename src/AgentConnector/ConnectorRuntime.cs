@@ -7,9 +7,17 @@ using Microsoft.Extensions.Logging;
 namespace AgentConnector;
 
 public sealed class ConnectorRuntime(ConnectorOptions options, ProviderCatalog catalog, ConnectorPolicy policy,
-    ICredentialStore credentials, ConnectionCoordinator coordinator, ConnectorOAuth oauth,
+    ConnectorConnectionService connections,
     ConnectorTransport transport, IConnectorAuditSink audit, ILogger<ConnectorRuntime> logger)
 {
+    public ConnectorRuntime(ConnectorOptions options, ProviderCatalog catalog, ConnectorPolicy policy,
+        ICredentialStore credentials, ConnectionCoordinator coordinator, ConnectorOAuth oauth,
+        ConnectorTransport transport, IConnectorAuditSink audit, ILogger<ConnectorRuntime> logger)
+        : this(options, catalog, policy, new ConnectorConnectionService(catalog, credentials, coordinator, oauth),
+            transport, audit, logger)
+    {
+    }
+
     public async Task<ActionResult> ExecuteAsync(string tenantId, string actionId, JsonObject input,
         string connectionName = "default", CancellationToken cancellationToken = default)
     {
@@ -17,7 +25,7 @@ public sealed class ConnectorRuntime(ConnectorOptions options, ProviderCatalog c
         policy.DemandAction(actionId);
         DemandConfigured(provider);
         var key = new ConnectionKey(tenantId, provider.Id, connectionName);
-        EncryptedFileCredentialStore.ValidateKey(key);
+        key.Validate();
         DemandInputSize(input);
         if (provider.Id is "openai" or "anthropic" or "cohere" or "mistral" or "groq" &&
             input["body"] is JsonObject body && body["stream"] is JsonValue stream && stream.TryGetValue<bool>(out var streaming) && streaming)
@@ -33,36 +41,21 @@ public sealed class ConnectorRuntime(ConnectorOptions options, ProviderCatalog c
         policy.DemandProxy(providerId);
         DemandConfigured(provider);
         var key = new ConnectionKey(tenantId, providerId, connectionName);
-        EncryptedFileCredentialStore.ValidateKey(key);
+        key.Validate();
         DemandInputSize(input.Body);
         DemandInputSize(input.Query);
         using var request = ProviderRequestBuilder.BuildProxy(provider, input);
         return await ExecuteRequestAsync(key, providerId + ".proxy", provider, request, null, cancellationToken);
     }
 
-    public async Task<ConnectionInfo> SetConnectionAsync(ConnectionKey key, ConnectorCredential credential, CancellationToken cancellationToken = default)
-    {
-        EncryptedFileCredentialStore.ValidateKey(key);
-        var provider = catalog.GetProvider(key.ProviderId);
-        if (provider.CredentialKind == CredentialKind.None) throw new ConnectorException("invalid_input", "This provider does not use credentials.");
-        ProviderRequestBuilder.ValidateCredential(provider, credential);
-        using var lease = await coordinator.LockAsync(key, cancellationToken);
-        coordinator.Invalidate(key);
-        await credentials.SetAsync(key, credential, cancellationToken);
-        return new(key.ProviderId, key.Name, credential.Kind, credential.ExpiresAt);
-    }
+    public Task<ConnectionInfo> SetConnectionAsync(ConnectionKey key, ConnectorCredential credential, CancellationToken cancellationToken = default) =>
+        connections.SetAsync(key, credential, cancellationToken);
 
-    public async Task DeleteConnectionAsync(ConnectionKey key, CancellationToken cancellationToken = default)
-    {
-        EncryptedFileCredentialStore.ValidateKey(key);
-        catalog.GetProvider(key.ProviderId);
-        using var lease = await coordinator.LockAsync(key, cancellationToken);
-        coordinator.Invalidate(key);
-        await credentials.DeleteAsync(key, cancellationToken);
-    }
+    public Task DeleteConnectionAsync(ConnectionKey key, CancellationToken cancellationToken = default) =>
+        connections.DeleteAsync(key, cancellationToken);
 
     public IAsyncEnumerable<ConnectionInfo> ListConnectionsAsync(string tenantId, CancellationToken cancellationToken = default) =>
-        credentials.ListAsync(tenantId, cancellationToken);
+        connections.ListAsync(tenantId, cancellationToken);
 
     private async Task<ActionResult> ExecuteRequestAsync(ConnectionKey key, string actionId, ConnectorProvider provider,
         HttpRequestMessage request, IReadOnlyList<string>? requiredScopes, CancellationToken cancellationToken)
@@ -74,20 +67,7 @@ public sealed class ConnectorRuntime(ConnectorOptions options, ProviderCatalog c
         string? errorCode = null;
         try
         {
-            ConnectorCredential? credential = null;
-            if (provider.CredentialKind != CredentialKind.None)
-            {
-                using var lease = await coordinator.LockAsync(key, cancellationToken);
-                credential = await credentials.GetAsync(key, cancellationToken)
-                    ?? throw new ConnectorException("connection_not_found", "The selected connection does not exist.", HttpStatusCode.NotFound);
-                if (credential.ExpiresAt <= DateTimeOffset.UtcNow.AddSeconds(60))
-                {
-                    credential = await oauth.RefreshAsync(provider, credential, cancellationToken);
-                    await credentials.SetAsync(key, credential, cancellationToken);
-                }
-                if (requiredScopes is { Count: > 0 } && credential.Scopes is { } granted && requiredScopes.Except(granted, StringComparer.Ordinal).Any())
-                    throw new ConnectorException("scope_missing", "The connection does not have the required scopes.", HttpStatusCode.Forbidden);
-            }
+            var credential = await connections.GetCredentialAsync(key, provider, requiredScopes, cancellationToken);
             ProviderRequestBuilder.Authenticate(request, provider, credential);
             var response = await transport.SendAsync(request, cancellationToken);
             DemandProviderSuccess(provider, response.Data);

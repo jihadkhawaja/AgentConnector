@@ -54,7 +54,7 @@ public sealed class EncryptedFileCredentialStore(ConnectorOptions options, IData
     public async IAsyncEnumerable<ConnectionInfo> ListAsync(string tenantId,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        ValidateIdentity(tenantId);
+        ConnectionKey.ValidateIdentity(tenantId);
         var directory = Path.Combine(options.CredentialDirectory, Hash(tenantId));
         if (!Directory.Exists(directory)) yield break;
         foreach (var path in Directory.EnumerateFiles(directory, "*.credential"))
@@ -71,18 +71,7 @@ public sealed class EncryptedFileCredentialStore(ConnectorOptions options, IData
         }
     }
 
-    public static void ValidateKey(ConnectionKey key)
-    {
-        ValidateIdentity(key.TenantId);
-        ValidateIdentity(key.ProviderId);
-        ValidateIdentity(key.Name);
-    }
-
-    private static void ValidateIdentity(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value) || value.Length > 256 || value.Any(char.IsControl))
-            throw new ConnectorException("invalid_input", "Connection identifiers must contain 1 to 256 non-control characters.");
-    }
+    public static void ValidateKey(ConnectionKey key) => key.Validate();
 
     private string GetPath(ConnectionKey key) => Path.Combine(options.CredentialDirectory,
         Hash(key.TenantId), Hash(JsonSerializer.Serialize(new[] { key.ProviderId, key.Name })) + ".credential");

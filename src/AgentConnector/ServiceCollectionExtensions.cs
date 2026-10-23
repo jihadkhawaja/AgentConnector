@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace AgentConnector;
 
@@ -33,7 +34,15 @@ public static class ServiceCollectionExtensions
             .ConfigurePrimaryHttpMessageHandler(NetworkGuard.CreateHandler)
             .RemoveAllLoggers();
         services.AddSingleton<ConnectorOAuth>();
-        services.AddSingleton<ConnectorRuntime>();
+        services.AddSingleton<ConnectorConnectionService>();
+        services.AddSingleton(provider => new ConnectorRuntime(
+            provider.GetRequiredService<ConnectorOptions>(),
+            provider.GetRequiredService<ProviderCatalog>(),
+            provider.GetRequiredService<ConnectorPolicy>(),
+            provider.GetRequiredService<ConnectorConnectionService>(),
+            provider.GetRequiredService<ConnectorTransport>(),
+            provider.GetRequiredService<IConnectorAuditSink>(),
+            provider.GetRequiredService<ILogger<ConnectorRuntime>>()));
         return services;
     }
 }
