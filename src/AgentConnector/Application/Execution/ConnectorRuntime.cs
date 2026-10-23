@@ -107,13 +107,3 @@ public sealed class ConnectorRuntime(ConnectorOptions options, ProviderCatalog c
             throw new ConnectorException("provider_error", "The provider reported an application-level error.", HttpStatusCode.BadGateway);
     }
 }
-
-public sealed class LoggingConnectorAuditSink(ILogger<LoggingConnectorAuditSink> logger) : IConnectorAuditSink
-{
-    public ValueTask WriteAsync(ExecutionAudit audit, CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("Connector execution {ExecutionId} action {ActionId} success {Success} error {ErrorCode} duration {DurationMs}ms",
-            audit.ExecutionId, audit.ActionId, audit.Success, audit.ErrorCode, audit.Duration.TotalMilliseconds);
-        return ValueTask.CompletedTask;
-    }
-}

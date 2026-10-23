@@ -9,8 +9,6 @@ using Microsoft.AspNetCore.WebUtilities;
 
 namespace AgentConnector;
 
-public sealed record OAuthAuthorization(Uri AuthorizationUri, DateTimeOffset ExpiresAt);
-
 public sealed class ConnectorOAuth(ConnectorOptions options, ProviderCatalog catalog, ICredentialStore credentials,
     ConnectionCoordinator coordinator, ConnectorTransport transport)
 {

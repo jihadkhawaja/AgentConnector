@@ -1,20 +1,89 @@
 # Architecture
 
-AgentConnector is a single .NET library with explicit responsibilities, not a collection of independently deployed services. Keep changes within the owning component and preserve the public contracts used by hosts.
+AgentConnector uses architectural folders within a single .NET library. Domain models, application services and ports, infrastructure adapters, HTTP presentation, and dependency injection each have a dedicated home. Keep changes within the owning component and preserve the public contracts used by hosts.
+
+## Folder Structure
+
+```text
+src/AgentConnector/
+    AgentConnector.csproj
+    Domain/
+        Connections/
+            ConnectionKey.cs
+            ConnectorCredential.cs
+            CredentialKind.cs
+        Exceptions/
+            ConnectorException.cs
+        Providers/
+            ActionParameter.cs
+            ConnectorAction.cs
+            ConnectorProvider.cs
+            OAuthEndpoints.cs
+            ParameterKind.cs
+            ParameterLocation.cs
+    Application/
+        Abstractions/
+            IConnectorAuditSink.cs
+            ICredentialStore.cs
+        Configuration/
+            ConnectorOptions.cs
+            OAuthClientOptions.cs
+        Connections/
+            ConnectorConnectionService.cs
+        Contracts/
+            ActionResult.cs
+            ConnectionInfo.cs
+            ExecutionAudit.cs
+            ProxyRequest.cs
+        Execution/
+            ConnectorRuntime.cs
+        Policies/
+            ConnectorPolicy.cs
+    Infrastructure/
+        Auditing/
+            LoggingConnectorAuditSink.cs
+        Concurrency/
+            ConnectionCoordinator.cs
+        Http/
+            ConnectorHttpResponse.cs
+            ConnectorTransport.cs
+            NetworkGuard.cs
+        OAuth/
+            ConnectorOAuth.cs
+            OAuthAuthorization.cs
+        Persistence/
+            EncryptedFileCredentialStore.cs
+        Providers/
+            ProviderCatalog.cs
+            ProviderRequestBuilder.cs
+    Presentation/
+        AspNetCore/
+            ActionSchemas.cs
+            EndpointRouteBuilderExtensions.cs
+    DependencyInjection/
+        ServiceCollectionExtensions.cs
+```
+
+Public types keep the `AgentConnector` namespace for source and binary compatibility. Folders describe ownership without changing consumers' imports. Each public type has its own source file; storage/audit ports belong to `Application/Abstractions`, not to the domain model or their infrastructure implementations.
+
+The tests mirror these folders under `tests/AgentConnector.Tests/Application`, `Infrastructure`, and `Presentation`. End-to-end OAuth/runtime tests stay together under `Application/Execution`, and combined storage/network tests stay under `Infrastructure`.
 
 ## Responsibilities
 
 | Boundary | Components | Responsibility |
 | --- | --- | --- |
-| Domain contracts | `Contracts.cs` | Provider and action descriptions, connection identities, credentials, results, errors, and storage/audit interfaces. Connection and credential validation belongs here, independent of file storage and HTTP request construction. |
+| Domain | `Domain/Connections`, `Domain/Providers`, `Domain/Exceptions` | Provider/action models, connection identities, credentials, validation rules, and errors. Domain code does not depend on application services, infrastructure adapters, or ASP.NET Core. |
+| Application contracts and ports | `Application/Contracts`, `Application/Abstractions` | Execution and connection DTOs, execution audit records, and the storage/audit interfaces used by application services. |
+| Application configuration and policy | `Application/Configuration`, `Application/Policies` | Connector limits, OAuth client configuration, and deny-by-default action/proxy authorization rules. |
 | Application execution | `ConnectorRuntime` | Enforce action/proxy policy and input limits, build requests, obtain credentials, dispatch requests, interpret provider errors, and audit executions. |
 | Connection lifecycle | `ConnectorConnectionService` | Validate management operations, read/write/delete/list credentials through `ICredentialStore`, serialize mutations and refreshes, and enforce required scopes. |
-| Authorization flow | `ConnectorOAuth`, `ConnectionCoordinator` | Perform OAuth authorization and token exchange, enforce single-use state and PKCE, and fence stale callbacks after connection changes. |
-| Provider adapters | `ProviderCatalog`, `ActionSchemas`, `ProviderRequestBuilder` | Describe provider operations and translate validated inputs and credentials into provider-specific HTTP requests. |
+| Authorization infrastructure | `Infrastructure/OAuth`, `Infrastructure/Concurrency` | Perform OAuth authorization and token exchange, enforce single-use state and PKCE, and fence stale callbacks after connection changes. |
+| Provider adapters | `Infrastructure/Providers` | Describe provider operations and translate validated inputs and credentials into provider-specific HTTP requests. |
 | Infrastructure | `EncryptedFileCredentialStore`, `ConnectorTransport`, `NetworkGuard`, `LoggingConnectorAuditSink` | Encrypt and persist credentials, enforce network restrictions and transport limits, and emit execution audit events. |
-| ASP.NET Core integration | `ServiceCollectionExtensions`, `EndpointRouteBuilderExtensions` | Compose services, map HTTP contracts, and enforce host authentication and tenant authorization. |
+| ASP.NET Core presentation | `Presentation/AspNetCore` | Map HTTP contracts, describe JSON/OpenAPI schemas, and enforce host authentication and tenant authorization. |
+| Composition root | `DependencyInjection/ServiceCollectionExtensions.cs` | Register application services, infrastructure implementations, authorization defaults, and HTTP clients. |
 
-These are logical boundaries within the existing assembly. There are no additional layer projects, mediator dependencies, or interfaces for every class. Storage and auditing use interfaces because hosts need to replace those implementations.
+Folders make responsibilities visible but do not enforce dependency direction at compile time. The library still has application services that consume concrete provider, OAuth, coordination, and transport components; this organization does not claim strict Clean Architecture isolation. Separate assemblies and additional ports would be a further dependency-inversion refactor, not a prerequisite for this compatible folder reorganization. Storage and auditing already use interfaces because hosts need to replace those implementations.
 
 ## Execution Flow
 
