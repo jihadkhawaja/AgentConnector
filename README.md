@@ -2,7 +2,8 @@
 
 [![NuGet](https://img.shields.io/nuget/v/AgentConnector.svg)](https://www.nuget.org/packages/AgentConnector/)
 [![Downloads](https://img.shields.io/nuget/dt/AgentConnector.svg)](https://www.nuget.org/packages/AgentConnector/)
-[![Build](https://github.com/jihadkhawaja/agentconnector/actions/workflows/dotnet.yml/badge.svg)](https://github.com/jihadkhawaja/agentconnector/actions/workflows/dotnet.yml)
+[![Build & security](https://img.shields.io/github/actions/workflow/status/jihadkhawaja/agentconnector/dotnet.yml?label=build%20%26%20security)](https://github.com/jihadkhawaja/agentconnector/actions/workflows/dotnet.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/jihadkhawaja/agentconnector/codeql.yml?label=CodeQL)](https://github.com/jihadkhawaja/agentconnector/actions/workflows/codeql.yml)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/10.0)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
@@ -72,7 +73,7 @@ Only explicitly granted actions can run. The GitHub action above also needs a st
 
 AgentConnector needs to retrieve provider credentials when executing an action and save updated tokens after an OAuth refresh. These are the connected provider's API keys, access tokens, refresh tokens, or basic-auth credentials. Your host's authentication credentials and OAuth app client secrets are configured separately.
 
-Storage is defined by [`ICredentialStore`](src/AgentConnector/Application/Abstractions/ICredentialStore.cs). The library includes an encrypted file implementation; your application can supply an implementation backed by its database or a secret manager such as HashiCorp Vault or Azure Key Vault. **Database and vault adapters are not included.**
+Storage is defined by [`ICredentialStore`](src/AgentConnector/Application/Abstractions/ICredentialStore.cs). The library includes an encrypted file implementation; your application can supply an implementation backed by its database or a secret manager such as HashiCorp Vault or Azure Key Vault. The [Vault and encrypted SQLite sample](samples/AgentConnector.StorageSample/README.md) includes runnable adapters and setup instructions. These adapters live in the sample, rather than the library package; an Azure Key Vault adapter is not included.
 
 ### What does `CredentialDirectory` mean?
 
@@ -92,6 +93,8 @@ The store writes encrypted `.credential` files under hashed tenant directories, 
 If omitted, the directory defaults to `.data/credentials` under `AppContext.BaseDirectory`. For real credentials, explicitly choose a persistent service directory outside the repository, web root, and synchronized folders, restrict filesystem permissions, and configure a persistent, protected key ring. Losing the keys makes the stored credentials unreadable. See [key custody](SECURITY.md#encryption-key-custody) for configuration examples.
 
 ### Use your database or vault
+
+For complete examples, run the [storage sample host](samples/AgentConnector.StorageSample/README.md) with `Connector__CredentialStore` set to `Vault` or `Sqlite`. Both stores support saved connections and OAuth credential updates. The guide includes a Vault policy and a synthetic-data smoke test.
 
 Register your implementation **before** `AddAgentConnector`. Its default store registration uses `TryAddSingleton`, so your registration takes precedence:
 
@@ -189,6 +192,8 @@ Run the security analyzers, fresh dependency audit, regression tests, and option
 
 See [security scanning](docs/SECURITY-SCANNING.md) for report locations, SonarQube setup, and checks that require external services.
 
+The **Build & security** badge tracks the CI build, including analyzers, dependency auditing, and regression tests. **CodeQL** tracks the separate security analysis workflow. Both show workflow status; inspect the linked runs and security findings for details.
+
 ## Documentation
 
 | Guide | What you'll find |
@@ -198,6 +203,7 @@ See [security scanning](docs/SECURITY-SCANNING.md) for report locations, SonarQu
 | [Security and deployment](SECURITY.md) | Trust boundaries, key custody, network controls, and deployment requirements. |
 | [Features and limitations](docs/COMPATIBILITY.md) | Supported behavior and integration limits. |
 | [Atlassian sample](samples/AgentConnector.Server/ATLASSIAN.md) | Jira and Confluence OAuth setup and runnable examples. |
+| [Vault and database sample](samples/AgentConnector.StorageSample/README.md) | HashiCorp Vault KV v2 and encrypted SQLite credential stores, configuration, and smoke testing. |
 | [Security scanning](docs/SECURITY-SCANNING.md) | Local gates and external scanner setup. |
 | [Repository agent guidance](AGENTS.md) | Contribution rules and the [security scanning agent](.codex/agents/security_scanner.toml). |
 

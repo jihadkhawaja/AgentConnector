@@ -4,6 +4,7 @@
 	</Folder>
 	<Folder Name="/samples/">
 		<Project Path="samples/AgentConnector.Server/AgentConnector.Server.csproj" />
+		<Project Path="samples/AgentConnector.StorageSample/AgentConnector.StorageSample.csproj" />
 	</Folder>
 	<Folder Name="/tests/">
 		<Project Path="tests/AgentConnector.Tests/AgentConnector.Tests.csproj" />

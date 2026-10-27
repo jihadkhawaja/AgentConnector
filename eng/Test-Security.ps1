@@ -24,7 +24,10 @@ try {
     $auditOutput | Set-Content -LiteralPath (Join-Path $reportDirectory 'dependencies.json') -Encoding utf8
     $audit = $auditOutput | Out-String | ConvertFrom-Json
     if ($audit.problems) { throw 'The dependency audit reported an error; inspect dependencies.json.' }
-    if (@($audit.projects).Count -ne 3) { throw 'The dependency audit did not report every solution project.' }
+    [xml]$solution = Get-Content -LiteralPath 'AgentConnector.slnx' -Raw
+    $expectedProjects = @($solution.SelectNodes('//Project') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $repositoryRoot $_.Path)) })
+    $auditedProjects = @($audit.projects | ForEach-Object { [IO.Path]::GetFullPath($_.path) })
+    if (Compare-Object $expectedProjects $auditedProjects) { throw 'The dependency audit did not report every solution project.' }
     foreach ($project in $audit.projects) {
         foreach ($framework in $project.frameworks) {
             foreach ($package in @($framework.topLevelPackages) + @($framework.transitivePackages)) {

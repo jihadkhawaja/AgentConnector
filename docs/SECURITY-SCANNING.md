@@ -18,6 +18,7 @@ Reports are written under `artifacts/security/reports/`:
 | --- | --- |
 | `AgentConnector.sarif` | Library compiler and analyzer diagnostics |
 | `AgentConnector.Server.sarif` | Sample server compiler and analyzer diagnostics |
+| `AgentConnector.StorageSample.sarif` | Vault/SQLite sample compiler and analyzer diagnostics |
 | `AgentConnector.Tests.sarif` | Test compiler and analyzer diagnostics |
 | `dependencies.json` | Direct and transitive NuGet vulnerability audit |
 | `veracode.zip` | Optional compiled application package for Veracode |
@@ -42,7 +43,7 @@ Reference: [SonarScanner for .NET](https://docs.sonarsource.com/sonarqube-server
 
 ## Veracode
 
-The optional ZIP includes the library and sample application DLLs, portable PDBs, dependency manifest, and runtime configuration. It uses a framework-dependent Debug publish with optimization disabled, and an explicit file allowlist excludes tests, credentials, keys, and local configuration. It contains no third-party runtime DLLs because the application has no third-party runtime dependencies.
+The optional ZIP includes the library and original `AgentConnector.Server` sample application DLLs, portable PDBs, dependency manifest, and runtime configuration. It uses a framework-dependent Debug publish with optimization disabled, and an explicit file allowlist excludes tests, credentials, keys, and local configuration. It contains no third-party runtime DLLs because that application has no third-party runtime dependencies. The separate Vault/SQLite storage sample is covered by the local analyzer/test/dependency gate but is not included in this archive; scanning its compiled application requires packaging its SQLite dependencies as well.
 
 Submit this package through your licensed Veracode account and select both application modules for analysis. Review prescan results for missing modules and dependencies, run Static Analysis and SCA as licensed, and enforce your policy against all findings. Generating the archive does not run Veracode or imply a passing result.
 

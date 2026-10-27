@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <ProjectReference Include="../../src/AgentConnector/AgentConnector.csproj" />
+    <Compile Include="../AgentConnector.Server/SampleBearerHandler.cs" Link="SampleBearerHandler.cs" />
+  </ItemGroup>
+</Project>
