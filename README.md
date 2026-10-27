@@ -70,6 +70,7 @@ Outside Development, the sample rejects HTTP requests and enables HSTS. Configur
 - [Architecture and extension boundaries](docs/ARCHITECTURE.md)
 - [Providers and supported operations](docs/PROVIDERS.md)
 - [Security and deployment](SECURITY.md)
+- [Repository agent guidance](AGENTS.md) and [security scanning agent](.codex/agents/security_scanner.toml)
 - [Features and limitations](docs/COMPATIBILITY.md)
 
 ## License
