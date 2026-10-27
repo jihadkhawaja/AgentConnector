@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connect Jira and Confluence</title>
+  <link rel="stylesheet" href="/atlassian/sample.css">
+  <script src="/atlassian/sample.js" defer></script>
+</head>
+<body>
+  <main>
+    <h1>Connect Jira and Confluence</h1>
+    <p>Sign in with Atlassian to let agents read your Jira issues and Confluence pages.</p>
+    <p>This administrator demo uses the sample host's fixed tenant. Enter your connector admin token here;
+      enter your Atlassian password only in the Atlassian popup.</p>
+    <label for="admin-token">Connector admin token</label>
+    <input id="admin-token" type="password" autocomplete="off" spellcheck="false" maxlength="4096">
+    <label for="connection-name">Connection name</label>
+    <input id="connection-name" value="work" maxlength="128" autocomplete="off">
+    <div class="buttons">
+      <button type="button" data-provider="jira">Sign in to Jira</button>
+      <button type="button" data-provider="confluence">Sign in to Confluence</button>
+      <button type="button" id="check-connections">Check connections</button>
+    </div>
+    <p id="status" role="status" aria-live="polite">Choose a product to open Atlassian sign-in.</p>
+    <pre id="connections"></pre>
+    <p>Tokens entered here are never saved in browser storage. Agents use a separate runtime token.
+      Read ATLASSIAN.md in this sample for app setup and agent requests.</p>
+  </main>
+</body>
+</html>

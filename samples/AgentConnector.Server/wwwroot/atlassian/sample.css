@@ -1,0 +1,10 @@
+:root { font-family: system-ui, sans-serif; color-scheme: light dark; }
+body { margin: 0; padding: 2rem 1rem; }
+main { max-width: 44rem; margin: auto; }
+h1 { line-height: 1.2; }
+p { line-height: 1.6; }
+label { display: block; margin: 1.25rem 0 .4rem; font-weight: 600; }
+input { box-sizing: border-box; width: 100%; padding: .75rem; font: inherit; }
+.buttons { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.5rem 0; }
+button { padding: .8rem 1rem; font: inherit; cursor: pointer; }
+pre { overflow-wrap: anywhere; white-space: pre-wrap; }

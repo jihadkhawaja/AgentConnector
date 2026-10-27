@@ -12,5 +12,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" />
     <ProjectReference Include="../../src/AgentConnector/AgentConnector.csproj" />
     <Using Include="Xunit" />
+    <Compile Include="../../samples/AgentConnector.Server/AtlassianSample.cs" Link="Samples/AtlassianSample.cs" />
   </ItemGroup>
 </Project>

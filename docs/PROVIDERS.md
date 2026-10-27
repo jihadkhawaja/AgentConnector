@@ -69,6 +69,8 @@ options.ProviderBaseUris["shopify"] = new Uri("https://your-store.myshopify.com/
 
 Jira OAuth 3LO calls instead require `https://api.atlassian.com/ex/jira/CLOUD_ID/`. Confluence 3LO uses `https://api.atlassian.com/ex/confluence/CLOUD_ID/`. Configure the corresponding OAuth endpoints explicitly in `OAuthClientOptions.Endpoints` and the required scopes. Salesforce's API instance must be configured; the runtime does not trust an arbitrary `instance_url` returned by a token response. Regional endpoints and sovereign-cloud deployments require explicit trusted configuration and separate verification; commercial defaults are not a compliance certification.
 
+See the [Jira and Confluence OAuth sample](../samples/AgentConnector.Server/ATLASSIAN.md) for Atlassian app registration, minimal scopes, popup sign-in, and agent requests using these API roots.
+
 ## Operation Limits
 
 Actions return provider-native JSON, including pagination cursors/links. There is no automatic pagination, binary file handling, SSE streaming, retry loop, batch orchestration, provider webhook ingestion, or provider-specific SDK object model. Never follow a provider's `nextLink` as an arbitrary URL through another HTTP client with these credentials. Use the declared query parameters or a separately authorized, origin-confined proxy request.

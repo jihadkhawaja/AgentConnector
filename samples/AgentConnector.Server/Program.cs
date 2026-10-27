@@ -15,10 +15,12 @@ var protection = builder.Services.AddDataProtection().SetApplicationName("AgentC
 if (OperatingSystem.IsWindows()) protection.ProtectKeysWithDpapi();
 
 builder.Services.AddAuthentication("SampleBearer").AddScheme<AuthenticationSchemeOptions, SampleBearerHandler>("SampleBearer", _ => { });
+var atlassianEnabled = false;
 builder.Services.AddAgentConnector(options =>
 {
     options.CredentialDirectory = Path.Combine(dataDirectory, "credentials");
     options.AllowedActions.UnionWith(["hackernews.*", "github.get_current_user", "github.list_repositories"]);
+    atlassianEnabled = AtlassianSample.Configure(options, builder.Configuration);
 });
 builder.Services.AddAuthorization();
 var app = builder.Build();
@@ -37,6 +39,7 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseAuthentication();
 app.UseAuthorization();
+if (atlassianEnabled) app.MapAtlassianSample();
 app.MapAgentConnector();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 await app.RunAsync();

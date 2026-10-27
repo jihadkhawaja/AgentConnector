@@ -65,6 +65,10 @@ The API is at `http://127.0.0.1:5188/connector`. Send the appropriate token in t
 
 Outside Development, the sample rejects HTTP requests and enables HSTS. Configure HTTPS on the server. TLS-terminating proxies require host-managed forwarded-header configuration restricted to trusted proxies; the sample does not trust forwarded headers automatically.
 
+### Jira And Confluence OAuth Sample
+
+See the [Atlassian sample guide](samples/AgentConnector.Server/ATLASSIAN.md) for developer-console app registration, minimal Jira/Confluence permissions, and configuration. The sample includes a browser sign-in page that opens Atlassian OAuth in a popup, handles the callback, and keeps provider tokens on the server, plus runnable agent read examples.
+
 ## Documentation
 
 - [Architecture and extension boundaries](docs/ARCHITECTURE.md)
