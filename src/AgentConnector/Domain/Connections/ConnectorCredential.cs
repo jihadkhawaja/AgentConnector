@@ -11,7 +11,10 @@ public sealed record ConnectorCredential(
     public void Validate(ConnectorProvider provider)
     {
         if (!Enum.IsDefined(Kind) || Kind == CredentialKind.None || string.IsNullOrWhiteSpace(Secret) ||
-            Secret.Length > 32768 || Secret.Any(char.IsControl) || UserName?.Any(char.IsControl) == true ||
+            Secret.Length > 32768 || Secret.Any(char.IsControl) || UserName?.Length > 32768 || UserName?.Any(char.IsControl) == true ||
+            (RefreshToken is not null && (RefreshToken.Length is 0 or > 32768 || RefreshToken.Any(char.IsControl))) ||
+            (Scopes is not null && (Scopes.Count > 256 || Scopes.Any(scope => string.IsNullOrWhiteSpace(scope) ||
+                scope.Length > 2048 || scope.Any(character => char.IsControl(character) || char.IsWhiteSpace(character))))) ||
             (Kind is CredentialKind.Bearer or CredentialKind.OAuth2 && Secret.Any(char.IsWhiteSpace)) ||
             (Kind == CredentialKind.Basic && (string.IsNullOrWhiteSpace(UserName) || UserName.Contains(':'))) ||
             (Kind == CredentialKind.ApiKey && provider.ApiKeyHeader is null && provider.ApiKeyQueryParameter is null))

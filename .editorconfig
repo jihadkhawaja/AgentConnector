@@ -1,0 +1,9 @@
+root = true
+
+[*.cs]
+# Include the SDK's opt-in security rules in every build.
+dotnet_analyzer_diagnostic.category-Security.severity = warning
+
+# These Sonar security rules are opt-in; the other vulnerability rules are enabled by default.
+dotnet_diagnostic.S3884.severity = warning
+dotnet_diagnostic.S4212.severity = warning

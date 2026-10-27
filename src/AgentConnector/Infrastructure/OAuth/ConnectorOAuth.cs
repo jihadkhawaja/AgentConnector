@@ -64,7 +64,7 @@ public sealed class ConnectorOAuth(ConnectorOptions options, ProviderCatalog cat
             ["grant_type"] = "authorization_code", ["code"] = code, ["redirect_uri"] = client.RedirectUri.AbsoluteUri
         };
         if (endpoints.UsePkce) fields["code_verifier"] = authorization.Verifier;
-        var credential = await ExchangeAsync(client, endpoints, fields, null, cancellationToken);
+        var credential = await ExchangeAsync(provider, client, endpoints, fields, null, cancellationToken);
         await credentials.SetAsync(authorization.Key, credential, cancellationToken);
         coordinator.Invalidate(authorization.Key);
         return new(authorization.Key.ProviderId, authorization.Key.Name, credential.Kind, credential.ExpiresAt);
@@ -76,7 +76,7 @@ public sealed class ConnectorOAuth(ConnectorOptions options, ProviderCatalog cat
         if (credential.Kind != CredentialKind.OAuth2 || string.IsNullOrEmpty(credential.RefreshToken))
             throw new ConnectorException("credential_expired", "This credential has expired and must be reconnected.", HttpStatusCode.Unauthorized);
         var (client, endpoints) = Configuration(provider);
-        return await ExchangeAsync(client, endpoints, new()
+        return await ExchangeAsync(provider, client, endpoints, new()
         {
             ["grant_type"] = "refresh_token", ["refresh_token"] = credential.RefreshToken
         }, credential, cancellationToken);
@@ -97,7 +97,7 @@ public sealed class ConnectorOAuth(ConnectorOptions options, ProviderCatalog cat
         return (client, endpoints);
     }
 
-    private async Task<ConnectorCredential> ExchangeAsync(OAuthClientOptions client, OAuthEndpoints endpoints,
+    private async Task<ConnectorCredential> ExchangeAsync(ConnectorProvider provider, OAuthClientOptions client, OAuthEndpoints endpoints,
         Dictionary<string, string> fields, ConnectorCredential? previous, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, endpoints.Token);
@@ -129,8 +129,21 @@ public sealed class ConnectorOAuth(ConnectorOptions options, ProviderCatalog cat
                 throw new ConnectorException("oauth_exchange_failed", "Provider returned an invalid token lifetime.", HttpStatusCode.BadGateway);
             expires = DateTimeOffset.UtcNow.AddSeconds(seconds);
         }
-        var scopes = response["scope"]?.ToString().Split([' ', ','], StringSplitOptions.RemoveEmptyEntries) ?? previous?.Scopes;
-        return new(CredentialKind.OAuth2, token, RefreshToken: response["refresh_token"]?.GetValue<string>() ?? previous?.RefreshToken,
-            ExpiresAt: expires, Scopes: scopes);
+        var scopes = OptionalString(response, "scope")?.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries) ?? previous?.Scopes;
+        var credential = new ConnectorCredential(CredentialKind.OAuth2, token,
+            RefreshToken: OptionalString(response, "refresh_token") ?? previous?.RefreshToken, ExpiresAt: expires, Scopes: scopes);
+        try { credential.Validate(provider); }
+        catch (ConnectorException)
+        {
+            throw new ConnectorException("oauth_exchange_failed", "Provider returned an invalid credential.", HttpStatusCode.BadGateway);
+        }
+        return credential;
+    }
+
+    private static string? OptionalString(JsonObject response, string name)
+    {
+        if (response[name] is null) return null;
+        if (response[name] is JsonValue value && value.TryGetValue<string>(out var text)) return text;
+        throw new ConnectorException("oauth_exchange_failed", "Provider returned an invalid credential field.", HttpStatusCode.BadGateway);
     }
 }

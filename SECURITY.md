@@ -49,6 +49,6 @@ Use one application instance with the default store/coordination. Multi-instance
 
 ## Supply Chain And Release
 
-The production project references only the ASP.NET shared framework. Test dependencies are version-pinned with a transitive lock file and use nuget.org source mapping. Keep the .NET SDK/runtime and test packages patched, review any added dependencies, run `dotnet list AgentConnector.slnx package --vulnerable --include-transitive`, and review publish outputs before distribution.
+The production project has no third-party runtime package dependencies. SonarAnalyzer.CSharp is a private build dependency and does not flow to consumers. All projects have transitive lock files and use nuget.org source mapping. Keep the .NET SDK/runtime and packages patched, review any added dependencies, run `./eng/Test-Security.ps1`, and review publish outputs before distribution. Restore audits direct and transitive dependencies at every severity and fails on reported vulnerabilities or unavailable audit data. See [security scanning](docs/SECURITY-SCANNING.md) for external scanner setup and limitations.
 
 This is an initial implementation. Automated fixtures are not proof of live-provider correctness or production security. Run a deployment-specific threat review, sandbox integration tests, key-recovery tests, and egress checks before exposing credentials. Report vulnerabilities privately through your product's established security channel; do not publish provider credentials in an issue.

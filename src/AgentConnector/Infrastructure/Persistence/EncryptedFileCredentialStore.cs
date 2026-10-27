@@ -47,7 +47,7 @@ public sealed class EncryptedFileCredentialStore(ConnectorOptions options, IData
         cancellationToken.ThrowIfCancellationRequested();
         ValidateKey(key);
         try { File.Delete(GetPath(key)); }
-        catch (DirectoryNotFoundException) { }
+        catch (DirectoryNotFoundException) { /* Deleting an already absent record is idempotent. */ }
         return ValueTask.CompletedTask;
     }
 

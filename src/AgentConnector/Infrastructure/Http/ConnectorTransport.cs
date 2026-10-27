@@ -39,7 +39,7 @@ public sealed class ConnectorTransport(HttpClient client, ConnectorOptions optio
             while ((count = await stream.ReadAsync(chunk, budget.Token)) != 0)
             {
                 if (buffer.Length + count > options.MaximumResponseBytes) throw TooLarge();
-                buffer.Write(chunk, 0, count);
+                await buffer.WriteAsync(chunk.AsMemory(0, count), budget.Token);
             }
             if (buffer.Length == 0) return new(null, (int)response.StatusCode);
             try { return new(JsonNode.Parse(buffer.GetBuffer().AsSpan(0, (int)buffer.Length)), (int)response.StatusCode); }

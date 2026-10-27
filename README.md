@@ -14,13 +14,21 @@ Includes 48 provider adapters, 158 actions, OAuth, encrypted credentials, tenant
 
 ## Build
 
-Requires the .NET 10 SDK.
+Requires .NET SDK 10.0.403 or newer in the .NET 10 feature bands, and .NET/ASP.NET Core runtime 10.0.14 or newer.
 
 ```powershell
 dotnet restore AgentConnector.slnx --locked-mode
 dotnet build AgentConnector.slnx -c Release --no-restore
 dotnet test AgentConnector.slnx -c Release --no-build
 ```
+
+Run the security analyzers, fresh dependency audit, regression tests, and optional Veracode packaging with PowerShell 7:
+
+```powershell
+./eng/Test-Security.ps1 -PrepareVeracode
+```
+
+See [security scanning](docs/SECURITY-SCANNING.md) for report locations, SonarQube setup, and checks that require external services.
 
 ## Use In ASP.NET Core
 
@@ -49,10 +57,13 @@ Your host must configure authentication and provide a trusted `tenant_id` claim.
 Set `Connector__RuntimeToken` and `Connector__AdminToken` to distinct random values of at least 32 characters, then run:
 
 ```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project samples/AgentConnector.Server --urls http://127.0.0.1:5188
 ```
 
 The API is at `http://127.0.0.1:5188/connector`. Send the appropriate token in the `Authorization: Bearer <token>` header. The sample uses one fixed tenant; use your application's identity system for production.
+
+Outside Development, the sample rejects HTTP requests and enables HSTS. Configure HTTPS on the server. TLS-terminating proxies require host-managed forwarded-header configuration restricted to trusted proxies; the sample does not trust forwarded headers automatically.
 
 ## Documentation
 

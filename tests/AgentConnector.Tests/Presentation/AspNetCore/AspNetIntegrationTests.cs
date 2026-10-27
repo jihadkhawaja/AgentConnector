@@ -92,6 +92,18 @@ public sealed class AspNetIntegrationTests : IAsyncLifetime
         Assert.DoesNotContain("refresh-secret", json);
     }
 
+    [Theory]
+    [InlineData("{\"credential\":{\"kind\":\"bearer\",\"secret\":\"first\",\"secret\":\"second\"}}")]
+    [InlineData("{\"credential\":{\"kind\":\"bearer\",\"secret\":\"value\"},\"connectionName\":\"one\",\"connectionName\":\"two\"}")]
+    public async Task RejectsDuplicateJsonPropertiesBeforeSavingCredentials(string body)
+    {
+        client.DefaultRequestHeaders.Authorization = new("Bearer", "admin");
+        var response = await client.PutAsync("/connector/api/connections/github", Json(body));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var listed = JsonNode.Parse(await client.GetStringAsync("/connector/api/connections"))!;
+        Assert.Empty(listed["data"]!.AsArray());
+    }
+
     [Fact]
     public async Task RejectsUnsupportedSafetyHeadersRatherThanIgnoringThem()
     {
@@ -120,6 +132,7 @@ public sealed class AspNetIntegrationTests : IAsyncLifetime
         var callback = await client.GetAsync("/connector/oauth/callback?state=invalid&code=test");
         Assert.Equal(HttpStatusCode.BadRequest, callback.StatusCode);
         Assert.True(callback.Headers.CacheControl!.NoStore);
+        Assert.Equal("nosniff", Assert.Single(callback.Headers.GetValues("X-Content-Type-Options")));
     }
 
     public async Task DisposeAsync()

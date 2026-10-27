@@ -1,8 +1,54 @@
-**/bin/
-**/obj/
-**/TestResults/
+# .NET build and publish output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+[Dd]ebug/
+[Rr]elease/
+[Pp]ublish/
+*.binlog
+
+# Visual Studio and per-user settings
 .vs/
-.data/
 *.user
 *.suo
-artifacts/
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.sln.iml
+*.VC.db
+*.VC.VC.opendb
+
+# JetBrains Rider and ReSharper
+.idea/
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# VS Code workspace files
+*.code-workspace
+
+# Test results and coverage reports
+[Tt]est[Rr]esults/
+coverage/
+coverage-report/
+*.coverage
+*.coveragexml
+coverage*.xml
+coverage*.json
+*.trx
+
+# Generated NuGet packages (keep packages.lock.json under version control)
+*.nupkg
+*.snupkg
+
+# Local publishing credentials
+*.publishsettings
+*.pubxml.user
+
+# Local application data
+.data/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini

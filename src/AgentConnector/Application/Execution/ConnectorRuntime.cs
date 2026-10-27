@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -79,12 +80,15 @@ public sealed class ConnectorRuntime(ConnectorOptions options, ProviderCatalog c
         catch { errorCode = "execution_failed"; throw; }
         finally
         {
-            try
-            {
-                await audit.WriteAsync(new(executionId, key.TenantId, provider.Id, actionId, key.Name, started, timer.Elapsed, success, errorCode), CancellationToken.None);
-            }
-            catch { logger.LogError("Connector audit sink failed for execution {ExecutionId}.", executionId); }
+            await WriteAuditAsync(new(executionId, key.TenantId, provider.Id, actionId, key.Name, started, timer.Elapsed, success, errorCode));
         }
+    }
+
+    [SuppressMessage("Major Code Smell", "S6667", Justification = "Custom audit sinks may throw exceptions containing secrets; log only the execution identifier.")]
+    private async Task WriteAuditAsync(ExecutionAudit execution)
+    {
+        try { await audit.WriteAsync(execution, CancellationToken.None); }
+        catch { logger.LogError("Connector audit sink failed for execution {ExecutionId}.", execution.ExecutionId); }
     }
 
     private void DemandConfigured(ConnectorProvider provider)

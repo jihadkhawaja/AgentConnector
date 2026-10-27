@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Diagnostics.CodeAnalysis;
 
 namespace AgentConnector;
 
@@ -6,6 +7,7 @@ public sealed class ProviderCatalog
 {
     private readonly FrozenDictionary<string, ConnectorProvider> providers;
     private readonly FrozenDictionary<string, (ConnectorProvider Provider, ConnectorAction Action)> actions;
+    private readonly IReadOnlyCollection<ConnectorAction> actionList;
 
     public ProviderCatalog(ConnectorOptions options, IEnumerable<ConnectorProvider>? additionalProviders = null)
     {
@@ -16,19 +18,19 @@ public sealed class ProviderCatalog
             NetworkGuard.ValidateHttpsUri(provider.BaseUri);
             if (provider.BaseUri.Query.Length != 0 || !provider.BaseUri.AbsolutePath.EndsWith('/'))
                 throw new ArgumentException($"Provider {provider.Id} requires a base URI ending in '/' without a query.");
-            foreach (var action in provider.Actions)
+            if (provider.Actions.FirstOrDefault(action => !action.Id.StartsWith(provider.Id + ".", StringComparison.Ordinal)) is { } invalidAction)
             {
-                if (!action.Id.StartsWith(provider.Id + ".", StringComparison.Ordinal))
-                    throw new ArgumentException($"Action {action.Id} must start with its provider ID.");
+                throw new ArgumentException($"Action {invalidAction.Id} must start with its provider ID.");
             }
         }
         providers = definitions.ToFrozenDictionary(provider => provider.Id, StringComparer.Ordinal);
         actions = definitions.SelectMany(provider => provider.Actions.Select(action => (Provider: provider, Action: action)))
             .ToFrozenDictionary(entry => entry.Action.Id, StringComparer.Ordinal);
+        actionList = Array.AsReadOnly(actions.Values.Select(entry => entry.Action).ToArray());
     }
 
     public IReadOnlyCollection<ConnectorProvider> Providers => providers.Values;
-    public IReadOnlyCollection<ConnectorAction> Actions => actions.Values.Select(entry => entry.Action).ToArray();
+    public IReadOnlyCollection<ConnectorAction> Actions => actionList;
     public ConnectorProvider GetProvider(string id) => providers.TryGetValue(id, out var provider) ? provider :
         throw new ConnectorException("unknown_provider", "Provider was not found.", System.Net.HttpStatusCode.NotFound);
     public (ConnectorProvider Provider, ConnectorAction Action) GetAction(string id) => actions.TryGetValue(id, out var action) ? action :
@@ -51,6 +53,7 @@ internal static class BuiltInProviders
         Dictionary<string, string>? headers = null, OAuthEndpoints? oauth = null, bool instance = false) =>
         new(id, name, new(url), kind, actions, header, query, headers, oauth, instance);
 
+    [SuppressMessage("Minor Code Smell", "S1075", Justification = "This catalog defines the canonical public provider endpoints. Trusted hosts can override API and OAuth endpoints through ConnectorOptions.")]
     public static IEnumerable<ConnectorProvider> Create()
     {
         var google = OAuth("https://accounts.google.com/o/oauth2/v2/auth", "https://oauth2.googleapis.com/token",

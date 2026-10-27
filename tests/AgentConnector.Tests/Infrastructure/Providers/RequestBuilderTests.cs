@@ -55,6 +55,30 @@ public sealed class RequestBuilderTests
     }
 
     [Theory]
+    [InlineData("username")]
+    [InlineData("refresh_token")]
+    [InlineData("scope_length")]
+    [InlineData("scope_count")]
+    [InlineData("scope_control")]
+    [InlineData("scope_whitespace")]
+    [InlineData("scope_null")]
+    public void CredentialValidationBoundsAllSecretAndScopeFields(string field)
+    {
+        var credential = new ConnectorCredential(CredentialKind.OAuth2, "access-token");
+        credential = field switch
+        {
+            "username" => credential with { UserName = new string('u', 32769) },
+            "refresh_token" => credential with { RefreshToken = new string('r', 32769) },
+            "scope_length" => credential with { Scopes = [new string('s', 2049)] },
+            "scope_count" => credential with { Scopes = Enumerable.Repeat("read", 257).ToArray() },
+            "scope_control" => credential with { Scopes = ["read\nwrite"] },
+            "scope_whitespace" => credential with { Scopes = ["read write"] },
+            _ => credential with { Scopes = [null!] }
+        };
+        Assert.Equal("invalid_input", Assert.Throws<ConnectorException>(() => credential.Validate(catalog.GetProvider("github"))).Code);
+    }
+
+    [Theory]
     [InlineData("..")]
     [InlineData("../other")]
     [InlineData("%2e%2e")]

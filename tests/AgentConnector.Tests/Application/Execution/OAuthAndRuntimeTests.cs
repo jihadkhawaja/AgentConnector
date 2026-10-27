@@ -111,6 +111,41 @@ public sealed class OAuthAndRuntimeTests : IDisposable
         Assert.Equal(0, handler.Calls);
     }
 
+    [Theory]
+    [InlineData("{\"access_token\":\"token with spaces\"}")]
+    [InlineData("{\"access_token\":\"valid-token\",\"refresh_token\":{\"secret\":\"do-not-disclose\"}}")]
+    [InlineData("{\"access_token\":\"valid-token\",\"refresh_token\":\"invalid\\nrefresh\"}")]
+    [InlineData("{\"access_token\":\"valid-token\",\"scope\":{\"unexpected\":true}}")]
+    public async Task OAuthRejectsMalformedCredentialsBeforePersisting(string response)
+    {
+        var key = new ConnectionKey("tenant", "github");
+        var authorization = await oauth.BeginAsync(key);
+        handler.Responder = _ => Task.FromResult(Json(response));
+        var state = QueryHelpers.ParseQuery(authorization.AuthorizationUri.Query)["state"].ToString();
+
+        var exception = await Assert.ThrowsAsync<ConnectorException>(() => oauth.CompleteAsync(state, "code"));
+
+        Assert.Equal("oauth_exchange_failed", exception.Code);
+        Assert.Equal(HttpStatusCode.BadGateway, exception.Status);
+        Assert.DoesNotContain("do-not-disclose", exception.ToString());
+        Assert.Null(await store.GetAsync(key));
+    }
+
+    [Theory]
+    [InlineData("access_token")]
+    [InlineData("refresh_token")]
+    public async Task OAuthRejectsOversizedTokensBeforePersisting(string field)
+    {
+        var key = new ConnectionKey("tenant", "github");
+        var authorization = await oauth.BeginAsync(key);
+        var response = new JsonObject { ["access_token"] = "valid-token", [field] = new string('s', 32769) };
+        handler.Responder = _ => Task.FromResult(Json(response.ToJsonString()));
+        var state = QueryHelpers.ParseQuery(authorization.AuthorizationUri.Query)["state"].ToString();
+
+        Assert.Equal("oauth_exchange_failed", (await Assert.ThrowsAsync<ConnectorException>(() => oauth.CompleteAsync(state, "code"))).Code);
+        Assert.Null(await store.GetAsync(key));
+    }
+
     [Fact]
     public async Task NotionUsesBasicClientAuthAndJsonTokenExchange()
     {

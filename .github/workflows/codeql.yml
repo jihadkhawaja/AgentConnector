@@ -1,0 +1,35 @@
+name: CodeQL security analysis
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '35 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: '10.0.x'
+      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370
+        with:
+          languages: csharp
+          build-mode: manual
+          queries: security-extended
+      - run: dotnet restore AgentConnector.slnx --locked-mode
+      - run: dotnet build AgentConnector.slnx -c Release --no-restore --no-incremental -p:UseSharedCompilation=false
+      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370
+        with:
+          category: /language:csharp

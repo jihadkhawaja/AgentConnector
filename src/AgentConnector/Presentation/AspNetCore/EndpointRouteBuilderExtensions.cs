@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
@@ -17,10 +18,12 @@ public static class EndpointRouteBuilderExtensions
     private static readonly JsonSerializerOptions InputOptions = new(JsonSerializerDefaults.Web)
     {
         MaxDepth = 32,
+        AllowDuplicateProperties = false,
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter<CredentialKind>(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false) }
     };
 
+    [SuppressMessage("Major Code Smell", "S6667", Justification = "Exception messages and inner exceptions can contain provider credentials; log only the request identifier.")]
     public static IEndpointRouteBuilder MapAgentConnector(this IEndpointRouteBuilder endpoints, string prefix = "/connector")
     {
         var options = endpoints.ServiceProvider.GetRequiredService<ConnectorOptions>();
@@ -30,6 +33,7 @@ public static class EndpointRouteBuilderExtensions
             var context = invocation.HttpContext;
             context.Response.Headers.CacheControl = "no-store";
             context.Response.Headers["Referrer-Policy"] = "no-referrer";
+            context.Response.Headers.XContentTypeOptions = "nosniff";
             try { return await next(invocation); }
             catch (ConnectorException exception)
             {
@@ -82,7 +86,7 @@ public static class EndpointRouteBuilderExtensions
                 throw new ConnectorException("unsupported_feature", "Durable idempotency is not implemented; this header cannot guarantee duplicate suppression.");
             var body = await ReadAsync<ActionExecutionRequest>(context, options);
             if (body.Input is null) throw new ConnectorException("invalid_input", "The input object is required.");
-            var result = await connector.ExecuteAsync(tenantId, actionId, body.Input, ConnectionName(context, body.ConnectionName), context.RequestAborted);
+            var result = await connector.ExecuteAsync(tenantId, actionId, body.Input, ResolveConnectionName(context, body.ConnectionName), context.RequestAborted);
             return Execution(result, actionId);
         });
         runtime.MapPost("/proxy/{providerId}", async (HttpContext context, string providerId, ConnectorRuntime connector) =>
@@ -91,7 +95,7 @@ public static class EndpointRouteBuilderExtensions
             var body = await ReadAsync<ProxyExecutionRequest>(context, options);
             if (string.IsNullOrEmpty(body.Endpoint)) throw new ConnectorException("invalid_input", "The endpoint is required.");
             var result = await connector.ProxyAsync(tenantId, providerId, new(body.Endpoint, body.Method, body.Query, body.Body),
-                ConnectionName(context, body.ConnectionName), context.RequestAborted);
+                ResolveConnectionName(context, body.ConnectionName), context.RequestAborted);
             return Success(new { status = result.Status, data = result.Data }, new { result.ExecutionId });
         });
         runtime.MapGet("/connections", async (HttpContext context, ConnectorRuntime connector) =>
@@ -105,18 +109,18 @@ public static class EndpointRouteBuilderExtensions
             var tenantId = Tenant(context, options);
             var body = await ReadAsync<SaveConnectionRequest>(context, options);
             if (body.Credential is null) throw new ConnectorException("invalid_input", "The credential object is required.");
-            return Success(await connector.SetConnectionAsync(new(tenantId, providerId, ConnectionName(context, body.ConnectionName)), body.Credential, context.RequestAborted));
+            return Success(await connector.SetConnectionAsync(new(tenantId, providerId, ResolveConnectionName(context, body.ConnectionName)), body.Credential, context.RequestAborted));
         });
         admin.MapDelete("/connections/{providerId}", async (HttpContext context, string providerId, ConnectorRuntime connector) =>
         {
-            await connector.DeleteConnectionAsync(new(Tenant(context, options), providerId, ConnectionName(context, null)), context.RequestAborted);
+            await connector.DeleteConnectionAsync(new(Tenant(context, options), providerId, ResolveConnectionName(context, null)), context.RequestAborted);
             return Success(new { deleted = true });
         });
         admin.MapPost("/oauth/{providerId}/authorize", async (HttpContext context, string providerId, ConnectorOAuth oauth) =>
         {
             var tenantId = Tenant(context, options);
             var body = await ReadAsync<BeginOAuthRequest>(context, options);
-            return Success(await oauth.BeginAsync(new(tenantId, providerId, ConnectionName(context, body.ConnectionName)), context.RequestAborted));
+            return Success(await oauth.BeginAsync(new(tenantId, providerId, ResolveConnectionName(context, body.ConnectionName)), context.RequestAborted));
         });
         root.MapGet("/oauth/callback", async (HttpContext context, ConnectorOAuth oauth) =>
             Success(await oauth.CompleteAsync(context.Request.Query["state"].ToString(), context.Request.Query["code"].ToString(),
@@ -143,7 +147,7 @@ public static class EndpointRouteBuilderExtensions
         return tenants[0];
     }
 
-    private static string ConnectionName(HttpContext context, string? bodyName)
+    private static string ResolveConnectionName(HttpContext context, string? bodyName)
     {
         if (context.Request.Headers.ContainsKey("x-oo-connector-app-id"))
             throw new ConnectorException("unsupported_selector", "Stable connection IDs are not supported. Select an explicit connection name.");
@@ -164,7 +168,7 @@ public static class EndpointRouteBuilderExtensions
         while ((count = await context.Request.Body.ReadAsync(chunk, context.RequestAborted)) > 0)
         {
             if (buffer.Length + count > options.MaximumRequestBytes) throw Oversized();
-            buffer.Write(chunk, 0, count);
+            await buffer.WriteAsync(chunk.AsMemory(0, count), context.RequestAborted);
         }
         return JsonSerializer.Deserialize<T>(buffer.GetBuffer().AsSpan(0, (int)buffer.Length), InputOptions)
             ?? throw new ConnectorException("invalid_input", "A JSON object is required.");
