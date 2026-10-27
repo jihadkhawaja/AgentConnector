@@ -1,0 +1,35 @@
+# Normalize text to LF in the repository and working tree on every platform.
+# Detect binary files automatically and leave their contents unchanged.
+* text=auto eol=lf
+
+# Use Git's C# diff driver for useful method names in diff headers.
+*.cs diff=csharp
+
+# Windows command scripts require CRLF in the working tree.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Keep shell and PowerShell scripts portable across platforms.
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+
+# Explicitly preserve binary assets, archives, and compiled .NET artifacts.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.zip binary
+*.gz binary
+*.7z binary
+*.nupkg binary
+*.snupkg binary
+*.dll binary
+*.exe binary
+*.pdb binary
