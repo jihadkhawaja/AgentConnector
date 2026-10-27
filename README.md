@@ -205,6 +205,9 @@ The **Build & security** badge tracks the CI build, including analyzers, depende
 | [Atlassian sample](samples/AgentConnector.Server/ATLASSIAN.md) | Jira and Confluence OAuth setup and runnable examples. |
 | [Vault and database sample](samples/AgentConnector.StorageSample/README.md) | HashiCorp Vault KV v2 and encrypted SQLite credential stores, configuration, and smoke testing. |
 | [Security scanning](docs/SECURITY-SCANNING.md) | Local gates and external scanner setup. |
+| [Contributing](CONTRIBUTING.md) | Development setup, verification, and pull request guidance. |
+| [Code of conduct](CODE_OF_CONDUCT.md) | Community expectations, reporting, and enforcement. |
+| [Accessibility](ACCESSIBILITY.md) | Accessibility goals, known limitations, and reporting barriers. |
 | [Repository agent guidance](AGENTS.md) | Contribution rules and the [security scanning agent](.codex/agents/security_scanner.toml). |
 
 ## License

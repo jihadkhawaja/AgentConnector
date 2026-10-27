@@ -1,0 +1,33 @@
+name: Accessibility report
+description: Report a barrier in documentation, contribution, or sample interfaces.
+title: "[Accessibility]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        See our [accessibility statement](https://github.com/jihadkhawaja/agentconnector/blob/main/ACCESSIBILITY.md) and [code of conduct](https://github.com/jihadkhawaja/agentconnector/blob/main/CODE_OF_CONDUCT.md).
+        You do not need to disclose a diagnosis or medical information. Remove personal information, credentials, and OAuth callback parameters from examples, screenshots, and logs. Report suspected vulnerabilities privately using [SECURITY.md](https://github.com/jihadkhawaja/agentconnector/blob/main/SECURITY.md).
+  - type: input
+    id: location
+    attributes:
+      label: Affected page or workflow
+      description: Include a documentation path, sample page, or contribution step. Remove sensitive URL parameters.
+    validations:
+      required: true
+  - type: textarea
+    id: barrier
+    attributes:
+      label: Barrier and steps to reproduce
+      description: Describe what you tried, what happened, and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and assistive technology
+      description: If relevant and comfortable to share, include OS, browser/client, assistive technology, and versions.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround or suggested improvement
+      description: Include any workaround or suggestion that would make this workflow accessible.

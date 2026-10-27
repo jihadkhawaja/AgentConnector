@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose an improvement or a new provider action.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check existing issues and [provider coverage](https://github.com/jihadkhawaja/agentconnector/blob/main/docs/PROVIDERS.md) first. Follow the [contributing guide](https://github.com/jihadkhawaja/agentconnector/blob/main/CONTRIBUTING.md) and [code of conduct](https://github.com/jihadkhawaja/agentconnector/blob/main/CODE_OF_CONDUCT.md).
+        Use synthetic examples only. Do not include credentials, personal data, or confidential business payloads.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Explain the task you cannot currently accomplish and who would benefit.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired API or workflow. For providers, include action IDs, authentication needs, and links to official API documentation when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or other approaches.
+  - type: textarea
+    id: implications
+    attributes:
+      label: Compatibility and deployment considerations
+      description: Describe known effects on existing callers, permissions, credential storage, outbound destinations, or accessibility. Do not disclose suspected vulnerabilities here; follow SECURITY.md instead.

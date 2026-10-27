@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a reproducible problem in AgentConnector.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before filing a report. Follow our [contributing guide](https://github.com/jihadkhawaja/agentconnector/blob/main/CONTRIBUTING.md) and [code of conduct](https://github.com/jihadkhawaja/agentconnector/blob/main/CODE_OF_CONDUCT.md).
+        Do not post suspected vulnerabilities or secrets here. Use the [security policy](https://github.com/jihadkhawaja/agentconnector/blob/main/SECURITY.md) for private reporting. Remove credentials, personal data, authorization headers, and OAuth callback parameters from all examples and logs.
+  - type: input
+    id: version
+    attributes:
+      label: AgentConnector version or commit
+      description: Include the package version or full source commit.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, .NET SDK/runtime versions, host setup, and provider/action IDs where relevant. Use synthetic tenant and connection names.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal synthetic example, configuration, and numbered steps. Do not attach credential stores or key rings.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe the result, including sanitized error messages or status codes.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Optional logs or stack traces with secrets and sensitive data removed. Do not include full request or response payloads from live accounts.
+      render: text
