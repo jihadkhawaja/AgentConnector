@@ -1,5 +1,7 @@
 # AgentConnector
 
+![AgentConnector — connect your agents to the services they use](docs/assets/agentconnector-cover.png)
+
 [![NuGet](https://img.shields.io/nuget/v/AgentConnector.svg)](https://www.nuget.org/packages/AgentConnector/)
 [![Downloads](https://img.shields.io/nuget/dt/AgentConnector.svg)](https://www.nuget.org/packages/AgentConnector/)
 [![Build & security](https://img.shields.io/github/actions/workflow/status/jihadkhawaja/agentconnector/dotnet.yml?label=build%20%26%20security)](https://github.com/jihadkhawaja/agentconnector/actions/workflows/dotnet.yml)
