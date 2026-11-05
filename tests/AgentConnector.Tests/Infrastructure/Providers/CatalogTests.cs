@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using AgentConnector;
 
@@ -41,28 +42,32 @@ public sealed class CatalogTests
     public void EveryCatalogActionBuildsWithItsDeclaredAuthenticationAndSchema()
     {
         var catalog = new ProviderCatalog(new());
-        Assert.Equal(48, catalog.Providers.Count);
-        Assert.Equal(158, catalog.Actions.Count);
+        Assert.Equal(49, catalog.Providers.Count);
+        Assert.Equal(221, catalog.Actions.Count);
         foreach (var provider in catalog.Providers)
         {
             foreach (var action in provider.Actions)
             {
-                var input = new System.Text.Json.Nodes.JsonObject();
+                var schema = ActionSchemas.Input(action);
+                var input = new JsonObject();
                 foreach (var parameter in action.Parameters.Where(parameter => parameter.Required))
                     input[parameter.Name] = parameter.Kind switch
                     {
-                        ParameterKind.Integer => System.Text.Json.Nodes.JsonValue.Create(1),
-                        ParameterKind.Boolean => System.Text.Json.Nodes.JsonValue.Create(true),
-                        _ => System.Text.Json.Nodes.JsonValue.Create("sample-id")
+                        ParameterKind.Integer => JsonValue.Create(1),
+                        ParameterKind.Boolean => JsonValue.Create(true),
+                        ParameterKind.Guid => JsonValue.Create("00000000-0000-0000-0000-000000000001"),
+                        _ => schema["properties"]![parameter.Name]!["enum"]?[0]?.DeepClone() ?? JsonValue.Create("sample-id")
                     };
-                if (action.RequiresBody) input["body"] = new System.Text.Json.Nodes.JsonObject();
+                if (action.RequiresBody)
+                    input["body"] = action.Id == "teams.search_messages"
+                        ? JsonNode.Parse("""{"requests":[{"entityTypes":["chatMessage"],"query":{"queryString":"sample"}}]}""")
+                        : new JsonObject();
                 using var request = ProviderRequestBuilder.Build(provider, action, input);
                 var credential = provider.CredentialKind == CredentialKind.None ? null :
                     new ConnectorCredential(provider.CredentialKind, "sample-secret", UserName: "sample-user");
                 ProviderRequestBuilder.Authenticate(request, provider, credential);
                 Assert.Equal(provider.BaseUri.Host, request.RequestUri!.Host);
                 Assert.Equal(action.Method, request.Method);
-                Assert.NotNull(ActionSchemas.Input(action));
             }
         }
     }

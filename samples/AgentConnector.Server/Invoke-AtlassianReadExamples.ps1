@@ -3,7 +3,9 @@ param(
     [uri]$BaseUri = 'https://localhost:7188',
     [string]$ConnectionName = 'work',
     [string]$IssueKey,
-    [string]$PageId
+    [string]$PageId,
+    [string]$Jql,
+    [string]$Cql
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,4 +31,6 @@ Invoke-ReadAction -ActionId 'jira.get_current_user' -InputValues @{}
 Invoke-ReadAction -ActionId 'jira.list_projects' -InputValues @{ startAt = 0 }
 Invoke-ReadAction -ActionId 'confluence.list_spaces' -InputValues @{}
 if ($IssueKey) { Invoke-ReadAction -ActionId 'jira.get_issue' -InputValues @{ issue_id = $IssueKey } }
-if ($PageId) { Invoke-ReadAction -ActionId 'confluence.get_page' -InputValues @{ page_id = $PageId } }
+if ($PageId) { Invoke-ReadAction -ActionId 'confluence.get_page' -InputValues @{ page_id = $PageId; 'body-format' = 'storage' } }
+if ($Jql) { Invoke-ReadAction -ActionId 'jira.search_issues' -InputValues @{ jql = $Jql; fields = 'summary,status'; maxResults = 10 } }
+if ($Cql) { Invoke-ReadAction -ActionId 'confluence.search' -InputValues @{ cql = $Cql; limit = 10 } }

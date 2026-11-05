@@ -1,3 +1,3 @@
 namespace AgentConnector;
 
-public enum ParameterKind { String, Integer, Boolean }
+public enum ParameterKind { String, Integer, Boolean, Guid }

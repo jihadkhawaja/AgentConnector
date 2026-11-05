@@ -6,7 +6,7 @@ AgentConnector is a native .NET 10 connector gateway. It runs in the host proces
 
 - Native `AddAgentConnector` DI registration and `MapAgentConnector` ASP.NET routing.
 - Direct C# connection management and action execution.
-- 48 explicitly defined provider adapters and 158 named actions, with input-schema discovery.
+- 49 explicitly defined provider adapters and 221 named actions, with input-schema discovery.
 - Named connections, tenant-isolated encrypted credential records, and metadata-only listing.
 - Host authentication and separate runtime/admin authorization policies.
 - Default-deny action and proxy grants; block rules override action grants.

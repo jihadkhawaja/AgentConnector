@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace AgentConnector;
 
 public sealed record ConnectorAction(
@@ -10,5 +12,9 @@ public sealed record ConnectorAction(
     bool RequiresBody = false,
     IReadOnlyList<string>? RequiredScopes = null)
 {
-    public bool IsReadOnly => Method == HttpMethod.Get || Method == HttpMethod.Head;
+    public bool IsReadOnly => Method == HttpMethod.Get || Method == HttpMethod.Head || ReadOnlyPost;
+
+    internal bool ReadOnlyPost { get; init; }
+    internal IReadOnlyDictionary<string, string>? Headers { get; init; }
+    internal Func<JsonObject, bool>? ValidateBody { get; init; }
 }

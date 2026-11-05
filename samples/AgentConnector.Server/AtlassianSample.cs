@@ -22,7 +22,7 @@ public static class AtlassianSample
             throw new InvalidOperationException("Atlassian:PublicOrigin must be an HTTPS origin, or loopback HTTP for development, without a path, query, or fragment.");
 
         // Both connections use the full union: a later consent for the same app can replace its earlier grant.
-        string[] scopes = ["read:jira-user", "read:jira-work", "read:space:confluence", "read:page:confluence", "offline_access"];
+        string[] scopes = ["read:jira-user", "read:jira-work", "read:space:confluence", "read:page:confluence", "read:content-details:confluence", "offline_access"];
         var endpoints = new OAuthEndpoints(new("https://auth.atlassian.com/authorize"), new("https://auth.atlassian.com/oauth/token"),
             UsePkce: false, UseJsonTokenBody: true,
             AuthorizationParameters: new Dictionary<string, string>
@@ -39,8 +39,8 @@ public static class AtlassianSample
             };
         }
         options.AllowedActions.UnionWith([
-            "jira.get_current_user", "jira.list_projects", "jira.get_issue",
-            "confluence.list_spaces", "confluence.get_page"
+            "jira.get_current_user", "jira.list_projects", "jira.get_issue", "jira.search_issues",
+            "confluence.list_spaces", "confluence.get_page", "confluence.search"
         ]);
         return true;
     }

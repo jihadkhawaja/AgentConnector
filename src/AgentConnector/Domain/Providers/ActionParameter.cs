@@ -5,4 +5,7 @@ public sealed record ActionParameter(
     ParameterLocation Location = ParameterLocation.Query,
     bool Required = false,
     ParameterKind Kind = ParameterKind.String,
-    string? WireName = null);
+    string? WireName = null)
+{
+    internal IReadOnlyList<string>? AllowedValues { get; init; }
+}

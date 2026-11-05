@@ -10,10 +10,14 @@ public static class ActionSchemas
         var required = new JsonArray();
         foreach (var parameter in action.Parameters)
         {
-            properties[parameter.Name] = new JsonObject
+            var schema = new JsonObject
             {
                 ["type"] = parameter.Kind switch { ParameterKind.Integer => "integer", ParameterKind.Boolean => "boolean", _ => "string" }
             };
+            if (parameter.Kind == ParameterKind.Guid) schema["format"] = "uuid";
+            if (parameter.AllowedValues is { } allowed)
+                schema["enum"] = new JsonArray(allowed.Select(value => (JsonNode?)JsonValue.Create(value)).ToArray());
+            properties[parameter.Name] = schema;
             if (parameter.Required) required.Add(parameter.Name);
         }
         if (action.AcceptsBody)

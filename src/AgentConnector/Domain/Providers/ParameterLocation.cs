@@ -1,3 +1,3 @@
 namespace AgentConnector;
 
-public enum ParameterLocation { Path, Query }
+public enum ParameterLocation { Path, Query, Form }

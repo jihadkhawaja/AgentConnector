@@ -15,6 +15,7 @@ public static class ProviderRequestBuilder
         if (input.Any(property => !known.Contains(property.Key))) throw Invalid("Unknown action input field.");
         var path = action.Path;
         var query = new Dictionary<string, string?>();
+        var form = new List<KeyValuePair<string, string>>();
         foreach (var parameter in action.Parameters)
         {
             var value = input[parameter.Name];
@@ -27,17 +28,21 @@ public static class ProviderRequestBuilder
             var text = parameter.Kind switch
             {
                 ParameterKind.String when scalar.TryGetValue<string>(out var result) => result,
+                ParameterKind.Guid when scalar.TryGetValue<string>(out var result) && Guid.TryParseExact(result, "D", out var guid) => guid.ToString("D"),
                 ParameterKind.Integer when scalar.TryGetValue<long>(out var result) => result.ToString(CultureInfo.InvariantCulture),
                 ParameterKind.Integer when scalar.TryGetValue<int>(out var result) => result.ToString(CultureInfo.InvariantCulture),
                 ParameterKind.Boolean when scalar.TryGetValue<bool>(out var result) => result ? "true" : "false",
                 _ => throw Invalid($"Input '{parameter.Name}' has the wrong type.")
             };
+            if (parameter.AllowedValues is { } allowed && !allowed.Contains(text, StringComparer.Ordinal))
+                throw Invalid($"Input '{parameter.Name}' is not an allowed value.");
             if (parameter.Location == ParameterLocation.Path)
             {
                 if (string.IsNullOrWhiteSpace(text) || text is "." or ".." || text.IndexOfAny(['/', '\\', '%']) >= 0 || text.Any(char.IsControl))
                     throw Invalid($"Path input '{parameter.Name}' must be a single safe segment.");
                 path = path.Replace("{" + parameter.Name + "}", Uri.EscapeDataString(text), StringComparison.Ordinal);
             }
+            else if (parameter.Location == ParameterLocation.Form) form.Add(new(parameter.WireName ?? parameter.Name, text));
             else query[parameter.WireName ?? parameter.Name] = text;
         }
         var request = new HttpRequestMessage(action.Method, QueryHelpers.AddQueryString(BuildUri(provider, path).AbsoluteUri, query));
@@ -45,11 +50,16 @@ public static class ProviderRequestBuilder
         {
             if (action.AcceptsBody && input["body"] is { } body)
             {
-                if (body is not JsonObject) throw Invalid("The body input must be a JSON object.");
+                if (form.Count > 0) throw Invalid("Form fields and a JSON body cannot be combined.");
+                if (body is not JsonObject json) throw Invalid("The body input must be a JSON object.");
+                if (action.ValidateBody?.Invoke(json) == false) throw Invalid("The body input contains unsupported fields or values for this action.");
                 request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
             }
             else if (action.RequiresBody) throw Invalid("Required input 'body' is missing.");
+            else if (form.Count > 0) request.Content = new FormUrlEncodedContent(form);
             AddProviderHeaders(request, provider);
+            if (action.Headers is { } headers)
+                foreach (var header in headers) request.Headers.Add(header.Key, header.Value);
             return request;
         }
         catch { request.Dispose(); throw; }

@@ -17,7 +17,7 @@ AgentConnector embeds provider actions, OAuth, and credential management in your
 
 | | Included |
 | --- | --- |
-| **Integrations** | 48 provider adapters and 158 named actions, including GitHub, Slack, Google Workspace, Microsoft Graph, and Atlassian. |
+| **Integrations** | 49 provider adapters and 221 named actions, including GitHub, Slack, Google Workspace, Microsoft Graph, Atlassian, Twilio, and Dynamics 365. |
 | **Connections** | OAuth authorization, token refresh, and encrypted credentials scoped to tenants and connection names. |
 | **Access control** | Explicit action grants, separate runtime and admin policies, and proxies denied by default. |
 | **Discovery** | Provider and action endpoints, JSON input schemas, and an OpenAPI document. |

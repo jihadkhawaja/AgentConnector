@@ -2,7 +2,7 @@
 
 Connect agents to **Atlassian Cloud** using delegated OAuth 2.0 (3LO). A human selects **Sign in to Jira** or **Sign in to Confluence**, signs in and consents in an Atlassian browser popup, and returns to the sample callback. The server exchanges the authorization code and encrypts the resulting credentials. Agents call AgentConnector with a separate runtime token and a connection name; they never receive Atlassian access tokens, refresh tokens, or the app's client secret.
 
-The example enables five read actions. Issue/page creation is an explicit extension described below. It uses the existing sample host, one fixed tenant, one trusted Atlassian site, and two separately stored provider connections. It does not cover Jira/Confluence Data Center or unattended client-credentials authentication.
+The example enables seven read actions, including Jira and Confluence search. Issue/page creation is an explicit extension described below. It uses the existing sample host, one fixed tenant, one trusted Atlassian Cloud site, and two separately stored provider connections.
 
 ## 1. Register the integration in the developer console
 
@@ -29,8 +29,10 @@ These steps follow Atlassian's [Jira 3LO guide](https://developer.atlassian.com/
 | `jira.get_current_user` | `read:jira-user` | Access to Jira |
 | `jira.list_projects` | `read:jira-work` | Access to the projects returned by Jira |
 | `jira.get_issue` | `read:jira-work` | Browse Projects and any applicable issue-security access |
+| `jira.search_issues` | `read:jira-work` | Browse Projects and any applicable issue-security access |
 | `confluence.list_spaces` | `read:space:confluence` | Access to the spaces returned by Confluence |
 | `confluence.get_page` | `read:page:confluence` | View permission for the space and page, including restrictions |
+| `confluence.search` | `read:content-details:confluence` | View permission for matching content |
 | Refresh after token expiry | `offline_access` in the authorization request | Continued consent and site access |
 
 `offline_access` is requested by the sample to obtain a refresh token; it is not an extra Jira or Confluence content scope to find in their permission lists. The server saves rotated refresh tokens and coordinates refresh within one process.
@@ -40,12 +42,12 @@ The administrator should grant the user product access, project access, and spac
 The exact scope set in [AtlassianSample.cs](AtlassianSample.cs) is:
 
 ```text
-read:jira-user read:jira-work read:space:confluence read:page:confluence offline_access
+read:jira-user read:jira-work read:space:confluence read:page:confluence read:content-details:confluence offline_access
 ```
 
 Both provider sign-ins request this union because subsequent consent for the same client/account can replace the previous scope grant. If your application only supports one product, remove the other product's OAuth client, actions, scopes, and sign-in button. Changes to scopes require renewed consent.
 
-Scope references: [Jira current user](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-myself/#api-rest-api-3-myself-get), [Jira projects](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/), [Jira issues](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/), [Confluence spaces](https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-space/), and [Confluence pages](https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-page/).
+See [Jira current user](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-myself/#api-rest-api-3-myself-get), [Jira projects](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-projects/), [Jira issues](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issues/), [Jira JQL search](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-search/), [Confluence spaces](https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-space/), [Confluence pages](https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-page/), and [Confluence CQL search](https://developer.atlassian.com/cloud/confluence/rest/v1/api-group-search/) for the provider scope requirements.
 
 ## 3. Identify the trusted Atlassian site
 
@@ -108,11 +110,12 @@ Callbacks use `no-store`, a restrictive content-security policy, and `no-referre
 
 Provision only the connector **runtime** token to the agent's HTTP tool. Keep the admin token and Atlassian client secret with the host/operator. The fixed `sample-tenant` comes from the sample bearer handler, not the request body. The agent selects `connectionName: "work"`.
 
-The runnable [Invoke-AtlassianReadExamples.ps1](Invoke-AtlassianReadExamples.ps1) calls Jira profile/projects and Confluence spaces. Optional arguments also read one issue and page. Run it in a second PowerShell session with `Connector__RuntimeToken` securely provisioned to that session:
+The runnable [Invoke-AtlassianReadExamples.ps1](Invoke-AtlassianReadExamples.ps1) calls Jira profile/projects and Confluence spaces. Optional arguments read a specific issue or page and run JQL or CQL searches. Run it in a second PowerShell session with `Connector__RuntimeToken` securely provisioned to that session.
 
 ```powershell
 ./samples/AgentConnector.Server/Invoke-AtlassianReadExamples.ps1 `
-    -BaseUri https://localhost:7188 -ConnectionName work -IssueKey DEMO-123 -PageId 123456
+    -BaseUri https://localhost:7188 -ConnectionName work -IssueKey DEMO-123 -PageId 123456 `
+    -Jql 'project = DEMO ORDER BY updated DESC' -Cql 'type = page AND space = DEMO'
 ```
 
 Example HTTP requests for the agent's tool:
@@ -130,10 +133,10 @@ POST /connector/v1/actions/confluence.get_page
 Authorization: Bearer <connector-runtime-token>
 Content-Type: application/json
 
-{"connectionName":"work","input":{"page_id":"123456"}}
+{"connectionName":"work","input":{"page_id":"123456","body-format":"storage"}}
 ```
 
-Discover permitted tools with `GET /connector/v1/actions?service=jira` or `?service=confluence`, or use `GET /connector/openapi.json`, all with the runtime bearer token. Do not give the agent management routes. Results contain provider-native JSON; respect data access rules when passing business data to a model. The current page action returns the default Confluence page representation; it does not request a particular body format or follow pagination automatically.
+Discover permitted tools with `GET /connector/v1/actions?service=jira` or `?service=confluence`, or use `GET /connector/openapi.json`, all with the runtime bearer token. Results contain provider-native JSON, and callers manage pagination. If a Confluence connection predates the CQL action, reconnect it after granting the search scope. See the [provider action reference](../../docs/PROVIDERS.md#action-reference) for inputs and additional actions.
 
 For an agent embedded in your authenticated ASP.NET Core host, inject `ConnectorRuntime` and execute the same actions directly:
 

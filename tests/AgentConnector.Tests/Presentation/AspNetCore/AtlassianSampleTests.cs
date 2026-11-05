@@ -87,9 +87,12 @@ public sealed class AtlassianSampleTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("jira", "jira.get_issue", "rest/api/3/issue/DEMO-1", "issue_id", "DEMO-1")]
-    [InlineData("confluence", "confluence.get_page", "wiki/api/v2/pages/123", "page_id", "123")]
-    public async Task PopupCallbackExchangesJsonOnceAndAgentsUseThePinnedSite(string provider, string action, string path, string inputName, string inputValue)
+    [InlineData("jira", "jira.get_issue", "rest/api/3/issue/DEMO-1", "issue_id", "DEMO-1", false)]
+    [InlineData("confluence", "confluence.get_page", "wiki/api/v2/pages/123", "page_id", "123", false)]
+    [InlineData("jira", "jira.search_issues", "rest/api/3/search/jql", "jql", "project = DEMO", true)]
+    [InlineData("confluence", "confluence.search", "wiki/rest/api/search", "cql", "type = page AND space = DEMO", true)]
+    public async Task PopupCallbackExchangesJsonOnceAndAgentsUseThePinnedSite(
+        string provider, string action, string path, string inputName, string inputValue, bool isQuery)
     {
         client.DefaultRequestHeaders.Authorization = new("Bearer", "admin");
         var begin = await client.PostAsJsonAsync($"/connector/api/oauth/{provider}/authorize", new { connectionName = "work" });
@@ -103,6 +106,7 @@ public sealed class AtlassianSampleTests : IAsyncLifetime
         Assert.Contains("offline_access", query["scope"].ToString());
         Assert.Contains("read:jira-work", query["scope"].ToString());
         Assert.Contains("read:page:confluence", query["scope"].ToString());
+        Assert.Contains("read:content-details:confluence", query["scope"].ToString());
         Assert.False(query.ContainsKey("code_challenge"));
 
         // Browsers return from Atlassian without a connector bearer token.
@@ -131,7 +135,10 @@ public sealed class AtlassianSampleTests : IAsyncLifetime
             connectionName = "work", input = new Dictionary<string, string> { [inputName] = inputValue }
         });
         Assert.Equal(HttpStatusCode.OK, execution.StatusCode);
-        Assert.Equal($"https://api.atlassian.com/ex/{provider}/{CloudId}/{path}", handler.LastApiUri!.AbsoluteUri);
+        var apiUri = handler.LastApiUri!;
+        Assert.Equal($"https://api.atlassian.com/ex/{provider}/{CloudId}/{path}", apiUri.GetLeftPart(UriPartial.Path));
+        if (isQuery) Assert.Equal(inputValue, QueryHelpers.ParseQuery(apiUri.Query)[inputName].ToString());
+        else Assert.Empty(apiUri.Query);
         var other = await client.PostAsJsonAsync($"/connector/v1/actions/{action}", new
         {
             connectionName = "missing", input = new Dictionary<string, string> { [inputName] = inputValue }

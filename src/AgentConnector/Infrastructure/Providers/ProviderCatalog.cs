@@ -37,14 +37,18 @@ public sealed class ProviderCatalog
         throw new ConnectorException("unknown_action", "Action was not found.", System.Net.HttpStatusCode.NotFound);
 }
 
-internal static class BuiltInProviders
+internal static partial class BuiltInProviders
 {
     private static ActionParameter Path(string name) => new(name, ParameterLocation.Path, true);
     private static ActionParameter Query(string name, bool required = false, ParameterKind kind = ParameterKind.String) => new(name, Required: required, Kind: kind);
     private static ConnectorAction Get(string id, string path, params ActionParameter[] parameters) =>
-        new(id, id[(id.IndexOf('.') + 1)..].Replace('_', ' '), HttpMethod.Get, path, parameters);
+        Action(id, HttpMethod.Get, path, parameters);
     private static ConnectorAction Post(string id, string path, params ActionParameter[] parameters) =>
-        new(id, id[(id.IndexOf('.') + 1)..].Replace('_', ' '), HttpMethod.Post, path, parameters, true, true);
+        JsonWrite(id, HttpMethod.Post, path, parameters);
+    private static ConnectorAction JsonWrite(string id, HttpMethod method, string path, params ActionParameter[] parameters) =>
+        Action(id, method, path, parameters) with { AcceptsBody = true, RequiresBody = true };
+    private static ConnectorAction Action(string id, HttpMethod method, string path, params ActionParameter[] parameters) =>
+        new(id, id[(id.IndexOf('.') + 1)..].Replace('_', ' '), method, path, parameters);
     private static OAuthEndpoints OAuth(string authorization, string token, bool pkce = true, bool basic = false,
         string separator = " ", IReadOnlyDictionary<string, string>? parameters = null) =>
         new(new(authorization), new(token), pkce, basic, separator, parameters);
@@ -124,10 +128,9 @@ internal static class BuiltInProviders
             Get("onedrive.list_files", "me/drive/root/children"), Get("onedrive.get_item", "me/drive/items/{item_id}", Path("item_id")),
             Post("onedrive.create_folder", "me/drive/items/{parent_id}/children", Path("parent_id"))
         ], oauth: microsoft);
-        yield return Provider("teams", "Microsoft Teams", "https://graph.microsoft.com/v1.0/", [
-            Get("teams.list_teams", "me/joinedTeams"), Get("teams.list_channels", "teams/{team_id}/channels", Path("team_id")),
-            Post("teams.send_message", "teams/{team_id}/channels/{channel_id}/messages", Path("team_id"), Path("channel_id"))
-        ], oauth: microsoft);
+        yield return Provider("teams", "Microsoft Teams", "https://graph.microsoft.com/v1.0/", TeamsActions(), oauth: microsoft);
+        yield return Provider("dynamics365", "Microsoft Dynamics 365 (Dataverse)", "https://dynamics.com/", Dynamics365Actions(),
+            headers: new() { ["OData-Version"] = "4.0", ["OData-MaxVersion"] = "4.0" }, oauth: microsoft, instance: true);
         yield return Provider("sharepoint", "Microsoft SharePoint", "https://graph.microsoft.com/v1.0/", [
             Get("sharepoint.search_sites", "sites", Query("search", true)),
             Get("sharepoint.list_lists", "sites/{site_id}/lists", Path("site_id")),
@@ -152,14 +155,8 @@ internal static class BuiltInProviders
                 parameters: new Dictionary<string, string> { ["owner"] = "user" }) with { UseJsonTokenBody = true });
         yield return Provider("linear", "Linear", "https://api.linear.app/", [Post("linear.graphql", "graphql")], CredentialKind.ApiKey, "Authorization",
             oauth: OAuth("https://linear.app/oauth/authorize", "https://api.linear.app/oauth/token"));
-        yield return Provider("jira", "Atlassian Jira", "https://api.atlassian.com/", [
-            Get("jira.get_current_user", "rest/api/3/myself"), Get("jira.list_projects", "rest/api/3/project/search", Query("startAt", kind: ParameterKind.Integer)),
-            Get("jira.get_issue", "rest/api/3/issue/{issue_id}", Path("issue_id")), Post("jira.create_issue", "rest/api/3/issue")
-        ], instance: true);
-        yield return Provider("confluence", "Atlassian Confluence", "https://api.atlassian.com/", [
-            Get("confluence.list_spaces", "wiki/api/v2/spaces", Query("cursor")),
-            Get("confluence.get_page", "wiki/api/v2/pages/{page_id}", Path("page_id")), Post("confluence.create_page", "wiki/api/v2/pages")
-        ], instance: true);
+        yield return Provider("jira", "Atlassian Jira", "https://api.atlassian.com/", JiraActions(), instance: true);
+        yield return Provider("confluence", "Atlassian Confluence", "https://api.atlassian.com/", ConfluenceActions(), instance: true);
         yield return Provider("airtable", "Airtable", "https://api.airtable.com/v0/", [
             Get("airtable.list_bases", "meta/bases", Query("offset")),
             Get("airtable.list_records", "{base_id}/{table_id}", Path("base_id"), Path("table_id"), Query("offset"), Query("filterByFormula")),
@@ -220,10 +217,7 @@ internal static class BuiltInProviders
         yield return Provider("sendgrid", "SendGrid", "https://api.sendgrid.com/v3/", [
             Get("sendgrid.get_profile", "user/profile"), Post("sendgrid.send_email", "mail/send"), Get("sendgrid.list_templates", "templates", Query("generations"))
         ]);
-        yield return Provider("twilio", "Twilio", "https://api.twilio.com/2010-04-01/", [
-            Get("twilio.get_account", "Accounts/{account_sid}.json", Path("account_sid")),
-            Get("twilio.list_messages", "Accounts/{account_sid}/Messages.json", Path("account_sid"), Query("PageSize", kind: ParameterKind.Integer))
-        ], CredentialKind.Basic);
+        yield return Provider("twilio", "Twilio", "https://api.twilio.com/2010-04-01/", TwilioActions(), CredentialKind.Basic);
         yield return Provider("openai", "OpenAI", "https://api.openai.com/v1/", [
             Get("openai.list_models", "models"), Post("openai.create_response", "responses"), Post("openai.create_chat_completion", "chat/completions"), Post("openai.create_embeddings", "embeddings")
         ]);
