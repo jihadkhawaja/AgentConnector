@@ -14,6 +14,6 @@
     <ErrorLog Condition="'$(SecurityReportDirectory)' != ''">$(SecurityReportDirectory)/$(MSBuildProjectName).sarif,version=2.1</ErrorLog>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" />
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.36.0.15337" PrivateAssets="all" />
   </ItemGroup>
 </Project>
